@@ -1,0 +1,52 @@
+name: Deploy Odoo Module
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: "read"
+      id-token: "write"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set Environment
+        id: env
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "ENV=prod" >> $GITHUB_OUTPUT
+            echo "Environment set to PRODUCTION"
+          elif [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
+            echo "ENV=test" >> $GITHUB_OUTPUT
+            echo "Environment set to TEST"
+          fi
+
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: "projects/670649208826/locations/global/workloadIdentityPools/github-actions-pool/providers/github-provider"
+          service_account: "github-deploy-sa@odoo-ia-prop-com.iam.gserviceaccount.com"
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy to GCP VM via IAP
+        run: |
+          MODULE_NAME=$(basename "${{ github.repository }}")
+          ENVIRONMENT="${{ steps.env.outputs.ENV }}"
+
+          echo "🚀 Triggering deployment for $MODULE_NAME to $ENVIRONMENT"
+
+          gcloud compute ssh vigbe@odoo-app-01 \
+            --project=odoo-ia-prop-com \
+            --zone=southamerica-west1-b \
+            --tunnel-through-iap \
+            --command="cd ~/odoo_deploy_files && ./deploy_module.sh \"$MODULE_NAME\" \"$ENVIRONMENT\""
