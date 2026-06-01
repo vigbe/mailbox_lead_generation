@@ -40,15 +40,52 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v3
 
-      - name: Deploy to GCP VM via IAP
+      - name: Deploy to all Odoo VMs
         run: |
           MODULE_NAME=$(basename "${{ github.repository }}")
           ENVIRONMENT="${{ steps.env.outputs.ENV }}"
 
-          echo "🚀 Triggering deployment for $MODULE_NAME to $ENVIRONMENT"
+          echo "🚀 Deploying $MODULE_NAME to $ENVIRONMENT across all VMs"
 
-          gcloud compute ssh vigbe@odoo-app-01 \
+          # Discover all VMs with a 'domain' label (indicates Odoo instance)
+          VMS=$(gcloud compute instances list \
             --project=odoo-ia-prop-com \
-            --zone=southamerica-west1-b \
-            --tunnel-through-iap \
-            --command="cd ~/odoo_deploy_files && ./deploy_module.sh \"$MODULE_NAME\" \"$ENVIRONMENT\""
+            --filter="status=RUNNING AND labels.domain:*" \
+            --format="value(name,zone)" \
+            --quiet)
+
+          if [ -z "$VMS" ]; then
+            echo "⚠️  No running Odoo VMs found."
+            exit 0
+          fi
+
+          echo "📋 Found VMs:"
+          echo "$VMS"
+          echo ""
+
+          FAILED=0
+
+          while IFS=$'\t' read -r VM_NAME VM_ZONE; do
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "📦 Deploying to $VM_NAME ($VM_ZONE)..."
+
+            if gcloud compute ssh "vigbe@$VM_NAME" \
+              --project=odoo-ia-prop-com \
+              --zone="$VM_ZONE" \
+              --tunnel-through-iap \
+              --command="cd ~/odoo_deploy_files && ./deploy_module.sh \"$MODULE_NAME\" \"$ENVIRONMENT\""; then
+              echo "✅ $VM_NAME: Deploy successful"
+            else
+              echo "❌ $VM_NAME: Deploy failed"
+              FAILED=1
+            fi
+          done <<< "$VMS"
+
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+          if [ "$FAILED" -eq 1 ]; then
+            echo "❌ One or more VMs failed. Check logs above."
+            exit 1
+          fi
+
+          echo "🎉 All VMs deployed successfully!"
