@@ -1,3 +1,5 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_correos_leads_user,correos_leads.user,model_correos_leads,group_correos_leads_user,1,1,1,0
-access_correos_leads_manager,correos_leads.manager,model_correos_leads,group_correos_leads_manager,1,1,1,1
+access_correos_leads_user,correos.leads.user,model_correos_leads,group_correos_leads_user,1,1,1,0
+access_correos_leads_manager,correos.leads.manager,model_correos_leads,group_correos_leads_manager,1,1,1,1
+access_correos_leads_settings_user,res.config.settings.user.correos.leads,base.model_res_config_settings,group_correos_leads_user,1,1,1,0
+access_correos_leads_settings_manager,res.config.settings.manager.correos.leads,base.model_res_config_settings,group_correos_leads_manager,1,1,1,1

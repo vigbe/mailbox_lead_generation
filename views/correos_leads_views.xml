@@ -1,46 +1,77 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- LIST (not editable: inbox managed via buttons) -->
     <record id="correos_leads_view_list" model="ir.ui.view">
         <field name="name">correos.leads.list</field>
         <field name="model">correos.leads</field>
         <field name="arch" type="xml">
-            <list string="correos-leads" editable="bottom" multi_edit="1">
+            <list string="Bandeja de correos">
                 <field name="name"/>
-                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="email_from"/>
+                <field name="subject"/>
+                <field name="lead_type" widget="badge"
+                       decoration-success="lead_type == 'consulta'"
+                       decoration-info="lead_type == 'captacion'"
+                       decoration-muted="lead_type == 'sin_clasificar'"/>
                 <field name="state" widget="badge"
-                       decoration-success="state == 'done'"
-                       decoration-warning="state == 'confirmed'"
-                       decoration-danger="state == 'draft'"/>
+                       decoration-muted="state == 'nuevo'"
+                       decoration-info="state == 'revisado'"
+                       decoration-success="state == 'convertido'"
+                       decoration-danger="state == 'rechazado_spam'"/>
+                <field name="crm_lead_id" optional="hide"/>
+                <field name="date_received"/>
             </list>
         </field>
     </record>
 
+    <!-- FORM -->
     <record id="correos_leads_view_form" model="ir.ui.view">
         <field name="name">correos.leads.form</field>
         <field name="model">correos.leads</field>
         <field name="arch" type="xml">
-            <form string="correos-leads">
+            <form string="Bandeja de correos">
                 <header>
-                    <button name="action_confirm" string="Confirmar"
+                    <button name="action_review" string="Revisar"
+                            type="object" class="btn-secondary"
+                            invisible="state != 'nuevo'"/>
+                    <button name="action_convert_to_lead" string="Convertir en Lead"
                             type="object" class="btn-primary"
-                            invisible="state != 'draft'"/>
-                    <button name="action_done" string="Completar"
-                            type="object" class="btn-primary"
-                            invisible="state != 'confirmed'"/>
-                    <button name="action_draft" string="Volver a Borrador"
-                            type="object"
-                            invisible="state == 'draft'"/>
+                            invisible="state not in ('nuevo', 'revisado')"/>
+                    <button name="action_reject_spam" string="Rechazar spam"
+                            type="object" class="btn-secondary"
+                            invisible="state == 'rechazado_spam'"/>
                     <field name="state" widget="statusbar"
-                           statusbar_visible="draft,confirmed,done"/>
+                           statusbar_visible="nuevo,revisado,convertido"/>
                 </header>
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_crm_lead" type="object"
+                                class="oe_stat_button" icon="fa-arrow-up"
+                                invisible="not crm_lead_id">
+                            <field name="crm_lead_id" widget="statinfo"
+                                   string="Lead"/>
+                        </button>
+                    </div>
                     <group>
-                        <group>
-                            <field name="name"/>
-                        </group>
-                        <group>
+                        <group string="Origen">
+                            <field name="email_from"/>
+                            <field name="email_to"/>
+                            <field name="date_received"/>
+                            <field name="subject"/>
+                            <field name="message_id"/>
+                            <field name="partner_id"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
+                        <group string="Clasificación">
+                            <field name="lead_type"/>
+                            <field name="property_ids" widget="many2many_tags"/>
+                        </group>
+                    </group>
+                    <group string="Contenido">
+                        <field name="body_html" nolabel="1" colspan="2"/>
+                    </group>
+                    <group string="Salida">
+                        <field name="crm_lead_id"/>
                     </group>
                 </sheet>
                 <div class="oe_chatter">
@@ -52,37 +83,64 @@
         </field>
     </record>
 
+    <!-- SEARCH -->
     <record id="correos_leads_view_search" model="ir.ui.view">
         <field name="name">correos.leads.search</field>
         <field name="model">correos.leads</field>
         <field name="arch" type="xml">
-            <search string="correos-leads">
+            <search string="Bandeja de correos">
                 <field name="name"/>
-                <field name="state"/>
-                <group expand="0" string="Agrupar por">
-                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
-                </group>
+                <field name="subject"/>
+                <field name="email_from"/>
+                <separator/>
+                <filter name="f_consulta" string="Consulta"
+                        domain="[('lead_type', '=', 'consulta')]"/>
+                <filter name="f_captacion" string="Captación"
+                        domain="[('lead_type', '=', 'captacion')]"/>
+                <filter name="f_sin_clasificar" string="Sin clasificar"
+                        domain="[('lead_type', '=', 'sin_clasificar')]"/>
+                <separator/>
+                <filter name="f_nuevo" string="Nuevo"
+                        domain="[('state', '=', 'nuevo')]"/>
+                <filter name="f_revisado" string="Revisado"
+                        domain="[('state', '=', 'revisado')]"/>
+                <filter name="f_convertido" string="Convertido"
+                        domain="[('state', '=', 'convertido')]"/>
+                <filter name="f_spam" string="Spam"
+                        domain="[('state', '=', 'rechazado_spam')]"/>
+                <separator/>
+                <filter name="g_lead_type" string="Agrupar por: Tipo"
+                        context="{'group_by': 'lead_type'}"/>
+                <filter name="g_state" string="Agrupar por: Estado"
+                        context="{'group_by': 'state'}"/>
             </search>
         </field>
     </record>
 
+    <!-- ACTION -->
     <record id="correos_leads_action" model="ir.actions.act_window">
-        <field name="name">correos-leads</field>
+        <field name="name">Bandeja de correos</field>
         <field name="res_model">correos.leads</field>
         <field name="view_mode">list,form</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
-                Crear el primer registro de correos-leads
+                Aún no hay correos en la bandeja.
+            </p>
+            <p>
+                Configure un servidor de correo entrante (fetchmail) con el
+                modelo «correos.leads» para que cada correo recibido cree un
+                registro aquí, listo para clasificar y convertir en lead.
             </p>
         </field>
     </record>
 
+    <!-- MENU -->
     <menuitem id="correos_leads_menu_root"
-              name="correos-leads"
+              name="Bandeja de correos"
               sequence="40"/>
 
     <menuitem id="correos_leads_menu_list"
-              name="correos-leads"
+              name="Correos"
               parent="correos_leads_menu_root"
               action="correos_leads_action"
               sequence="10"/>

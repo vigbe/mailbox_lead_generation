@@ -1,10 +1,11 @@
 name: Deploy Odoo Module
 
 on:
-  push:
-    branches:
-      - main
-      - develop
+  # push:
+  #   branches:
+  #     - main
+  #     - develop
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -63,9 +64,15 @@ jobs:
           echo "$VMS"
           echo ""
 
-          FAILED=0
+          # Pre-configure SSH to avoid interactive prompts during loop
+          gcloud compute config-ssh --project=odoo-ia-prop-com --quiet 2>/dev/null || true
+
+          # Use temp file to track failures across subshell
+          FAILFILE=$(mktemp)
+          echo "0" > "$FAILFILE"
 
           while IFS=$'\t' read -r VM_NAME VM_ZONE; do
+            if [ -z "$VM_NAME" ]; then continue; fi
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "📦 Deploying to $VM_NAME ($VM_ZONE)..."
 
@@ -73,15 +80,22 @@ jobs:
               --project=odoo-ia-prop-com \
               --zone="$VM_ZONE" \
               --tunnel-through-iap \
+              --force-key-file-overwrite \
+              --no-user-output-enabled \
+              --ssh-flag="-o ConnectTimeout=60" \
+              --ssh-flag="-n" \
               --command="cd ~/odoo_deploy_files && ./deploy_module.sh \"$MODULE_NAME\" \"$ENVIRONMENT\""; then
               echo "✅ $VM_NAME: Deploy successful"
             else
               echo "❌ $VM_NAME: Deploy failed"
-              FAILED=1
+              echo "1" > "$FAILFILE"
             fi
-          done <<< "$VMS"
+          done <<< "$(echo "$VMS")"
 
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+          FAILED=$(cat "$FAILFILE")
+          rm -f "$FAILFILE"
 
           if [ "$FAILED" -eq 1 ]; then
             echo "❌ One or more VMs failed. Check logs above."
