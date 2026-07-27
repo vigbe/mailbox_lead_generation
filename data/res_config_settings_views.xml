@@ -11,6 +11,7 @@
             <xpath expr="//app[1]" position="before">
                 <app string="correos-leads" name="correos_leads"
                      data-key="correos_leads" groups="base.group_system">
+
                     <block title="Clasificación de correos"
                            id="correos_leads_classification_block">
                         <setting id="correos_email_consultas_setting"
@@ -26,6 +27,56 @@
                                    placeholder="captacion@tudominio.com"/>
                         </setting>
                     </block>
+
+                    <block title="Decantación IA"
+                           id="correos_leads_ai_decantation_block">
+                        <setting id="correos_ai_provider_setting"
+                                 string="Proveedor IA"
+                                 help="Identificador del proveedor OpenAI-compatible a usar (default: openai).">
+                            <field name="correos_ai_provider"
+                                   placeholder="openai"/>
+                        </setting>
+                        <setting id="correos_ai_api_key_setting"
+                                 string="API key IA"
+                                 help="Clave de API del proveedor. Vacía = IA deshabilitada (registros pasan a «error»).">
+                            <field name="correos_ai_api_key" password="True"
+                                   placeholder="sk-..."/>
+                        </setting>
+                        <setting id="correos_ai_model_setting"
+                                 string="Modelo IA"
+                                 help="Nombre del modelo a invocar (default: gpt-4o-mini).">
+                            <field name="correos_ai_model"
+                                   placeholder="gpt-4o-mini"/>
+                        </setting>
+                        <setting id="correos_ai_base_url_setting"
+                                 string="Base URL IA"
+                                 help="URL base del endpoint OpenAI-compatible. Vacío = endpoint por defecto del proveedor.">
+                            <field name="correos_ai_base_url"
+                                   placeholder="https://api.openai.com/v1"/>
+                        </setting>
+                        <setting id="correos_ai_max_tokens_setting"
+                                 string="Máx. tokens"
+                                 help="Cantidad máxima de tokens de la respuesta IA (default: 1000).">
+                            <field name="correos_ai_max_tokens"/>
+                        </setting>
+                        <setting id="correos_ai_timeout_setting"
+                                 string="Timeout (s)"
+                                 help="Timeout en segundos por llamada HTTP a la IA (default: 30).">
+                            <field name="correos_ai_timeout"/>
+                        </setting>
+                        <setting id="correos_ai_retries_setting"
+                                 string="Reintentos"
+                                 help="Reintentos ante fallos de red/parseo por registro (default: 2).">
+                            <field name="correos_ai_retries"/>
+                        </setting>
+                        <setting id="correos_dynamic_model_setting"
+                                 string="Modelo dinámico"
+                                 help="Modelo Odoo contra el que se resuelve el matching IA (default: product.real_estate).">
+                            <field name="correos_dynamic_model"
+                                   placeholder="product.real_estate"/>
+                        </setting>
+                    </block>
+
                 </app>
             </xpath>
         </field>

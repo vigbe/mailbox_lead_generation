@@ -1,12 +1,20 @@
-# Python
+# Python / Odoo runtime artifacts
 __pycache__/
-*.pyc
+*.py[cod]
+*.egg-info/
 
-# Local agent / runtime state
-.atl/
-.pi-subagents/
-.codegraph/
+# Backups
+*.bak
+
+# macOS
 .DS_Store
+
+# Local agent / SDD runtime state
+.atl/
+.pi/
+.pi-subagents/
+.sdd/
+.codegraph/
 
 # Build output
 dist/

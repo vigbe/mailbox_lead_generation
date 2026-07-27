@@ -8,6 +8,24 @@ from odoo.exceptions import UserError
 _logger = logging.getLogger(__name__)
 
 
+# Canonical category domain shared between the AI result (``ai_category``) and
+# the derived computed ``category`` field.
+CATEGORY_SELECTION = [
+    ("lead", "Lead"),
+    ("captacion", "Captación"),
+    ("servicio", "Servicio"),
+    ("otro", "Otro"),
+]
+
+# Maps the legacy ``lead_type`` into the canonical ``category`` domain (fallback
+# used while no AI classification is available yet).
+_LEAD_TYPE_TO_CATEGORY = {
+    "consulta": "lead",
+    "captacion": "captacion",
+    "sin_clasificar": "otro",
+}
+
+
 class CorreosLeads(models.Model):
     _name = "correos.leads"
     _description = "Bandeja de decantacion de correos inmobiliarios"
@@ -64,6 +82,10 @@ class CorreosLeads(models.Model):
             ("revisado", "Revisado"),
             ("convertido", "Convertido"),
             ("rechazado_spam", "Spam rechazado"),
+            ("pending", "Pendiente IA"),
+            ("procesando", "Procesando IA"),
+            ("procesado", "Procesado IA"),
+            ("error", "Error IA"),
         ],
         string="Estado",
         default="nuevo",
@@ -82,6 +104,58 @@ class CorreosLeads(models.Model):
         "correos_leads_id",
         "property_id",
         string="Propiedades sugeridas",
+    )
+
+    # ------------------------------------------------------------------
+    # AI decantation result fields (PR-1 schema; all copy=False)
+    # ------------------------------------------------------------------
+    ai_category = fields.Selection(
+        CATEGORY_SELECTION,
+        string="Categoría IA",
+        copy=False,
+        tracking=True,
+        help="Clasificación inferida por la IA (lead, captación, servicio, otro).",
+    )
+    ai_confidence = fields.Float(
+        string="Confianza IA",
+        digits=(3, 2),
+        copy=False,
+        help="Confianza de la clasificación IA (0.00–1.00).",
+    )
+    ai_summary = fields.Text(
+        string="Resumen IA",
+        copy=False,
+        help="Resumen limpio extraído por la IA.",
+    )
+    ai_raw_response = fields.Text(
+        string="Respuesta IA (raw)",
+        copy=False,
+        readonly=True,
+        help="Respuesta cruda de la IA para auditoría.",
+    )
+    phone = fields.Char(
+        string="Teléfono",
+        copy=False,
+        help="Teléfono extraído por la IA.",
+    )
+    operation = fields.Char(
+        string="Operación",
+        copy=False,
+        help="Operación extraída por la IA (venta, arriendo, etc.).",
+    )
+    model_reference = fields.Reference(
+        selection="_selection_dynamic_models",
+        string="Referencia (IA)",
+        copy=False,
+        help="Registro del modelo dinámico resuelto por la IA (matching).",
+    )
+    category = fields.Selection(
+        CATEGORY_SELECTION,
+        compute="_compute_category",
+        store=True,
+        string="Categoría",
+        tracking=True,
+        help="Categoría efectiva: la IA gana, con fallback al lead_type.",
     )
 
     # ------------------------------------------------------------------
@@ -218,6 +292,59 @@ class CorreosLeads(models.Model):
         self.ensure_one()
         return True
 
+    # ------------------------------------------------------------------
+    # AI decantation logic (PR-1: compute + dynamic selection + cron stub)
+    # ------------------------------------------------------------------
+    @api.depends("ai_category", "lead_type")
+    def _compute_category(self):
+        """Effective category: the AI classification wins, otherwise the
+        ``lead_type`` is normalized into the canonical category domain.
+        """
+        for rec in self:
+            if rec.ai_category:
+                rec.category = rec.ai_category
+            else:
+                rec.category = _LEAD_TYPE_TO_CATEGORY.get(rec.lead_type, "otro")
+
+    @api.model
+    def _selection_dynamic_models(self):
+        """Whitelist of selectable models for ``model_reference``.
+
+        Guarantees at least one option so the Reference widget never breaks on
+        an empty selection. Returns the configured dynamic model (when installed)
+        plus the always-available ``product.real_estate``, de-duplicated.
+        """
+        choices = []
+        ICP = self.env["ir.config_parameter"].sudo()
+        dynamic_model = (
+            ICP.get_param("correos_leads.dynamic_model") or "product.real_estate"
+        )
+        if dynamic_model in self.env:
+            desc = self.env[dynamic_model]._description or dynamic_model
+            choices.append((dynamic_model, desc))
+        for model in ("product.real_estate",):
+            if model in self.env and model not in {key for key, _ in choices}:
+                desc = self.env[model]._description or model
+                choices.append((model, desc))
+        return choices or [("product.real_estate", "Producto Inmobiliario")]
+
+    def _cron_process_ai_batch(self, *, limit=50):
+        """PR-1 STUB: locate pending records without invoking the AI pipeline.
+
+        Safe no-op scheduled action: it searches the ``pending`` batch and logs
+        the count only. The real DB-level lock + AI wiring arrives in PR-2
+        (TASK-PR2-007). Never raises, never changes ``state``.
+        """
+        domain = [("state", "=", "pending")]
+        records = self.search(domain, limit=limit)
+        _logger.info(
+            "correos.leads: _cron_process_ai_batch stub found %d pending "
+            "record(s) (limit=%d). AI pipeline not wired yet (PR-2).",
+            len(records),
+            limit,
+        )
+        return records
+
     def _get_or_create_partner(self):
         """Return an existing partner for this record's email, or create one."""
         self.ensure_one()
@@ -304,6 +431,25 @@ class CorreosLeads(models.Model):
             "view_mode": "form",
             "target": "current",
         }
+
+    def action_send_to_pending(self):
+        """Enqueue records for AI processing.
+
+        Accepts ``nuevo``, ``revisado``, ``error`` and ``procesando``. The latter
+        allows re-queueing records stuck in ``procesando`` when a worker crashed
+        after the claim (R1 mitigation, agreed with the user).
+        """
+        for rec in self:
+            if rec.state in ("nuevo", "revisado", "error", "procesando"):
+                rec.state = "pending"
+        return True
+
+    def action_retry_ai(self):
+        """Re-queue records in error for a new AI attempt."""
+        for rec in self:
+            if rec.state == "error":
+                rec.state = "pending"
+        return True
 
     # ------------------------------------------------------------------
     # CRUD

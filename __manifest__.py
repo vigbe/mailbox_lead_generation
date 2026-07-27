@@ -25,6 +25,7 @@
         "security/ir.model.access.csv",
         "views/correos_leads_views.xml",
         "data/res_config_settings_views.xml",
+        "data/ir_cron.xml",
     ],
     "demo": [],
     "assets": {},
@@ -32,7 +33,9 @@
     "application": True,
     "auto_install": False,
     "external_dependencies": {
-        "python": [],
+        "python": [
+            "requests",
+        ],
         "bin": [],
     },
 }
