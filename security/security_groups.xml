@@ -3,25 +3,25 @@
     <!-- Odoo 19: res.groups no longer has category_id; groups link to a
          res.groups.privilege which itself links to an ir.module.category. -->
 
-    <record id="module_category_correos_leads" model="ir.module.category">
-        <field name="name">correos-leads</field>
+    <record id="module_category_mailbox_lead_generation" model="ir.module.category">
+        <field name="name">Mail Box Lead Generation</field>
         <field name="sequence">50</field>
     </record>
 
-    <record id="correos_leads_privilege" model="res.groups.privilege">
-        <field name="name">correos-leads</field>
-        <field name="category_id" ref="module_category_correos_leads"/>
+    <record id="mailbox_lead_generation_privilege" model="res.groups.privilege">
+        <field name="name">Mail Box Lead Generation</field>
+        <field name="category_id" ref="module_category_mailbox_lead_generation"/>
     </record>
 
-    <record id="group_correos_leads_user" model="res.groups">
+    <record id="group_mailbox_lead_generation_user" model="res.groups">
         <field name="name">Usuario</field>
-        <field name="privilege_id" ref="correos_leads_privilege"/>
+        <field name="privilege_id" ref="mailbox_lead_generation_privilege"/>
         <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
     </record>
 
-    <record id="group_correos_leads_manager" model="res.groups">
+    <record id="group_mailbox_lead_generation_manager" model="res.groups">
         <field name="name">Administrador</field>
-        <field name="privilege_id" ref="correos_leads_privilege"/>
-        <field name="implied_ids" eval="[(4, ref('group_correos_leads_user'))]"/>
+        <field name="privilege_id" ref="mailbox_lead_generation_privilege"/>
+        <field name="implied_ids" eval="[(4, ref('group_mailbox_lead_generation_user'))]"/>
     </record>
 </odoo>

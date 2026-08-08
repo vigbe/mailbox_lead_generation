@@ -26,9 +26,9 @@ _LEAD_TYPE_TO_CATEGORY = {
 }
 
 
-class CorreosLeads(models.Model):
-    _name = "correos.leads"
-    _description = "Bandeja de decantacion de correos inmobiliarios"
+class MailboxLeadGeneration(models.Model):
+    _name = "mailbox.lead.generation"
+    _description = "Mail Box Lead Generation"
     _inherit = ["mail.thread", "mail.activity.mixin"]
     _order = "id desc"
 
@@ -100,8 +100,8 @@ class CorreosLeads(models.Model):
     )
     property_ids = fields.Many2many(
         "product.real_estate",
-        "correos_leads_property_rel",
-        "correos_leads_id",
+        "mailbox_lead_generation_property_rel",
+        "mailbox_lead_generation_id",
         "property_id",
         string="Propiedades sugeridas",
     )
@@ -163,7 +163,7 @@ class CorreosLeads(models.Model):
     # ------------------------------------------------------------------
     @api.model
     def message_new(self, msg_dict, custom_values=None):
-        """Create a correos.leads record from an incoming email.
+        """Create a mailbox.lead.generation record from an incoming email.
 
         Called by fetchmail when the incoming mail server targets this model.
         Implements dedup-by-Message-ID, field extraction and lead-type
@@ -174,7 +174,7 @@ class CorreosLeads(models.Model):
         if msg_id:
             existing = self.search([("message_id", "=", msg_id)], limit=1)
             if existing:
-                _logger.info("correos.leads: duplicate message_id %s ignored.", msg_id)
+                _logger.info("mailbox.lead.generation: duplicate message_id %s ignored.", msg_id)
                 return existing
 
         custom_values = dict(custom_values or {})
@@ -263,13 +263,13 @@ class CorreosLeads(models.Model):
             consultas = [
                 a.lower()
                 for a in tools.email_split(
-                    ICP.get_param("correos_leads.email_consultas") or ""
+                    ICP.get_param("mailbox_lead_generation.email_consultas") or ""
                 )
             ]
             captacion = [
                 a.lower()
                 for a in tools.email_split(
-                    ICP.get_param("correos_leads.email_captacion") or ""
+                    ICP.get_param("mailbox_lead_generation.email_captacion") or ""
                 )
             ]
             for addr in addresses:
@@ -279,7 +279,7 @@ class CorreosLeads(models.Model):
                     return "captacion"
             return "sin_clasificar"
         except Exception:  # noqa: BLE001 - ingestion must stay resilient
-            _logger.exception("correos.leads: failed to assign lead_type")
+            _logger.exception("mailbox.lead.generation: failed to assign lead_type")
             return "sin_clasificar"
 
     def _analyze_and_match_properties(self):
@@ -317,7 +317,7 @@ class CorreosLeads(models.Model):
         choices = []
         ICP = self.env["ir.config_parameter"].sudo()
         dynamic_model = (
-            ICP.get_param("correos_leads.dynamic_model") or "product.real_estate"
+            ICP.get_param("mailbox_lead_generation.dynamic_model") or "product.real_estate"
         )
         if dynamic_model in self.env:
             desc = self.env[dynamic_model]._description or dynamic_model
@@ -338,7 +338,7 @@ class CorreosLeads(models.Model):
         domain = [("state", "=", "pending")]
         records = self.search(domain, limit=limit)
         _logger.info(
-            "correos.leads: _cron_process_ai_batch stub found %d pending "
+            "mailbox.lead.generation: _cron_process_ai_batch stub found %d pending "
             "record(s) (limit=%d). AI pipeline not wired yet (PR-2).",
             len(records),
             limit,

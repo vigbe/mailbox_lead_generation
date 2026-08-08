@@ -1,1 +1,1 @@
-from . import test_correos_leads
+from . import test_mailbox_lead_generation

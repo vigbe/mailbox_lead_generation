@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <!-- LIST (not editable: inbox managed via buttons) -->
-    <record id="correos_leads_view_list" model="ir.ui.view">
-        <field name="name">correos.leads.list</field>
-        <field name="model">correos.leads</field>
+    <record id="mailbox_lead_generation_view_list" model="ir.ui.view">
+        <field name="name">mailbox.lead.generation.list</field>
+        <field name="model">mailbox.lead.generation</field>
         <field name="arch" type="xml">
             <list string="Bandeja de correos">
                 <field name="name"/>
@@ -25,9 +25,9 @@
     </record>
 
     <!-- FORM -->
-    <record id="correos_leads_view_form" model="ir.ui.view">
-        <field name="name">correos.leads.form</field>
-        <field name="model">correos.leads</field>
+    <record id="mailbox_lead_generation_view_form" model="ir.ui.view">
+        <field name="name">mailbox.lead.generation.form</field>
+        <field name="model">mailbox.lead.generation</field>
         <field name="arch" type="xml">
             <form string="Bandeja de correos">
                 <header>
@@ -84,9 +84,9 @@
     </record>
 
     <!-- SEARCH -->
-    <record id="correos_leads_view_search" model="ir.ui.view">
-        <field name="name">correos.leads.search</field>
-        <field name="model">correos.leads</field>
+    <record id="mailbox_lead_generation_view_search" model="ir.ui.view">
+        <field name="name">mailbox.lead.generation.search</field>
+        <field name="model">mailbox.lead.generation</field>
         <field name="arch" type="xml">
             <search string="Bandeja de correos">
                 <field name="name"/>
@@ -118,9 +118,9 @@
     </record>
 
     <!-- ACTION -->
-    <record id="correos_leads_action" model="ir.actions.act_window">
+    <record id="mailbox_lead_generation_action" model="ir.actions.act_window">
         <field name="name">Bandeja de correos</field>
-        <field name="res_model">correos.leads</field>
+        <field name="res_model">mailbox.lead.generation</field>
         <field name="view_mode">list,form</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
@@ -128,20 +128,20 @@
             </p>
             <p>
                 Configure un servidor de correo entrante (fetchmail) con el
-                modelo «correos.leads» para que cada correo recibido cree un
+                modelo «mailbox.lead.generation» para que cada correo recibido cree un
                 registro aquí, listo para clasificar y convertir en lead.
             </p>
         </field>
     </record>
 
     <!-- MENU -->
-    <menuitem id="correos_leads_menu_root"
-              name="Bandeja de correos"
+    <menuitem id="mailbox_lead_generation_menu_root"
+              name="Mail Box Lead Generation"
               sequence="40"/>
 
-    <menuitem id="correos_leads_menu_list"
-              name="Correos"
-              parent="correos_leads_menu_root"
-              action="correos_leads_action"
+    <menuitem id="mailbox_lead_generation_menu_list"
+              name="Bandeja de correos"
+              parent="mailbox_lead_generation_menu_root"
+              action="mailbox_lead_generation_action"
               sequence="10"/>
 </odoo>
