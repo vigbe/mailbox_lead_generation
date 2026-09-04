@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- LIST -->
+    <record id="mailbox_lead_suggestion_view_list" model="ir.ui.view">
+        <field name="name">mailbox.lead.suggestion.list</field>
+        <field name="model">mailbox.lead.suggestion</field>
+        <field name="arch" type="xml">
+            <list string="Sugerencias de coincidencia">
+                <field name="lead_id"/>
+                <field name="match_type"/>
+                <field name="record_ref"/>
+                <field name="score"/>
+                <field name="state" widget="badge"
+                       decoration-info="state == 'suggested'"
+                       decoration-success="state == 'accepted'"
+                       decoration-danger="state == 'rejected'"/>
+                <field name="reason" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- FORM -->
+    <record id="mailbox_lead_suggestion_view_form" model="ir.ui.view">
+        <field name="name">mailbox.lead.suggestion.form</field>
+        <field name="model">mailbox.lead.suggestion</field>
+        <field name="arch" type="xml">
+            <form string="Sugerencia de coincidencia">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="lead_id"/>
+                            <field name="match_type"/>
+                            <field name="record_ref"/>
+                        </group>
+                        <group>
+                            <field name="res_model"/>
+                            <field name="res_id"/>
+                            <field name="score"/>
+                            <field name="state"/>
+                        </group>
+                    </group>
+                    <group string="Motivo">
+                        <field name="reason" nolabel="1" colspan="2"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- SEARCH (only searchable/stored fields as <field>) -->
+    <record id="mailbox_lead_suggestion_view_search" model="ir.ui.view">
+        <field name="name">mailbox.lead.suggestion.search</field>
+        <field name="model">mailbox.lead.suggestion</field>
+        <field name="arch" type="xml">
+            <search string="Sugerencias de coincidencia">
+                <field name="lead_id"/>
+                <field name="match_type"/>
+                <separator/>
+                <filter name="f_suggested" string="Sugerido"
+                        domain="[('state', '=', 'suggested')]"/>
+                <filter name="f_accepted" string="Aceptado"
+                        domain="[('state', '=', 'accepted')]"/>
+                <filter name="f_rejected" string="Rechazado"
+                        domain="[('state', '=', 'rejected')]"/>
+                <separator/>
+                <filter name="g_match_type" string="Agrupar por: Tipo"
+                        context="{'group_by': 'match_type'}"/>
+                <filter name="g_state" string="Agrupar por: Estado"
+                        context="{'group_by': 'state'}"/>
+            </search>
+        </field>
+    </record>
+
+    <!-- ACTION -->
+    <record id="mailbox_lead_suggestion_action" model="ir.actions.act_window">
+        <field name="name">Sugerencias de coincidencia</field>
+        <field name="res_model">mailbox.lead.suggestion</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- MENU (under the existing root menu) -->
+    <menuitem id="mailbox_lead_suggestion_menu"
+              name="Sugerencias"
+              parent="mailbox_lead_generation_menu_root"
+              action="mailbox_lead_suggestion_action"
+              sequence="20"/>
+</odoo>

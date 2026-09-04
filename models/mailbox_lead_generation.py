@@ -1,4 +1,5 @@
 import logging
+import unicodedata
 from datetime import timezone
 from email.utils import parsedate_to_datetime
 
@@ -29,7 +30,11 @@ _LEAD_TYPE_TO_CATEGORY = {
 class MailboxLeadGeneration(models.Model):
     _name = "mailbox.lead.generation"
     _description = "Mail Box Lead Generation"
-    _inherit = ["mail.thread", "mail.activity.mixin"]
+    _inherit = [
+        "mail.thread",
+        "mail.activity.mixin",
+        "mailbox.lead.generation.ai.provider",
+    ]
     _order = "id desc"
 
     # ------------------------------------------------------------------
@@ -98,12 +103,11 @@ class MailboxLeadGeneration(models.Model):
         readonly=True,
         copy=False,
     )
-    property_ids = fields.Many2many(
-        "product.real_estate",
-        "mailbox_lead_generation_property_rel",
-        "mailbox_lead_generation_id",
-        "property_id",
-        string="Propiedades sugeridas",
+    suggestion_ids = fields.One2many(
+        "mailbox.lead.suggestion",
+        "lead_id",
+        string="Sugerencias",
+        help="Coincidencias sugeridas (polimórficas) generadas por el matching.",
     )
 
     # ------------------------------------------------------------------
@@ -132,6 +136,26 @@ class MailboxLeadGeneration(models.Model):
         copy=False,
         readonly=True,
         help="Respuesta cruda de la IA para auditoría.",
+    )
+    ai_intent = fields.Selection(
+        [
+            ("property_sale", "Propiedad - Compra"),
+            ("property_rent", "Propiedad - Arriendo"),
+            ("service", "Servicio"),
+            ("promotion", "Destacar publicación"),
+            ("other", "Otro"),
+        ],
+        string="Intención IA",
+        copy=False,
+        tracking=True,
+        help="Intención inferida por la IA (compra/arriendo de propiedad, "
+        "servicio, destacar publicación, otro).",
+    )
+    ai_extracted = fields.Json(
+        string="Datos extraídos IA",
+        copy=False,
+        help="Datos estructurados extraídos por la IA (almacenados para el "
+        "motor de matching de la Fase C2).",
     )
     phone = fields.Char(
         string="Teléfono",
@@ -174,7 +198,9 @@ class MailboxLeadGeneration(models.Model):
         if msg_id:
             existing = self.search([("message_id", "=", msg_id)], limit=1)
             if existing:
-                _logger.info("mailbox.lead.generation: duplicate message_id %s ignored.", msg_id)
+                _logger.info(
+                    "mailbox.lead.generation: duplicate message_id %s ignored.", msg_id
+                )
                 return existing
 
         custom_values = dict(custom_values or {})
@@ -283,18 +309,177 @@ class MailboxLeadGeneration(models.Model):
             return "sin_clasificar"
 
     def _analyze_and_match_properties(self):
-        """Extension point for matching the email against product.real_estate.
+        """Run the AI classification + matching pipeline for one record.
 
-        In v1 this is an intentional no-op: it leaves ``property_ids`` empty.
-        Subsequent versions should override this method to suggest properties
-        based on the email content (subject/body/destination).
+        Builds the system/user messages, calls the AI provider, normalizes
+        the contract (category + intent + extracted_data), writes the result
+        and runs matching. The terminal state is owned here for consistency:
+        ``procesado`` on success; on failure the record is marked ``error``
+        and the exception is re-raised so callers (cron, UI) can apply their
+        own policy.
         """
         self.ensure_one()
+        try:
+            messages = [
+                {"role": "system", "content": self._ai_build_system_prompt()},
+                {"role": "user", "content": self._ai_build_user_message()},
+            ]
+            raw = self._ia_chat(messages)
+            vals = self._ai_validate_contract(raw)
+            self.write(vals)
+            self._run_matching()
+        except Exception:
+            _logger.exception(
+                "mailbox.lead.generation: AI analysis failed for record %s.",
+                self.id,
+            )
+            self.state = "error"
+            raise
+        self.state = "procesado"
         return True
 
     # ------------------------------------------------------------------
-    # AI decantation logic (PR-1: compute + dynamic selection + cron stub)
+    # Matching registry (Phase B scaffolds — Phase C fills the engine)
     # ------------------------------------------------------------------
+    @api.model
+    def _get_matching_sources(self):
+        """Return the ACTIVE matching sources as ``(source_key, label)`` tuples.
+
+        Pure registry: no matching logic. ``services`` (``product.template``) is
+        always available; ``real_estate`` is offered only when
+        ``real_estate_products`` is installed (model present in the registry).
+        """
+        sources = [("services", "Servicios (product.template)")]
+        if "product.real_estate" in self.env:
+            sources.append(("real_estate", "Propiedades (product.real_estate)"))
+        return sources
+
+    def _run_matching(self):
+        """Run matching for this lead and return the created suggestions.
+
+        Routes by ``ai_intent`` to the applicable source:
+        - property_sale / property_rent -> ``_match_real_estate`` (when installed)
+        - service / promotion -> ``_match_services`` (when product.template exists)
+
+        Each returned match dict is materialized into a ``mailbox.lead.suggestion``
+        row. Returns an empty recordset when nothing matches.
+        """
+        self.ensure_one()
+        intent = self.ai_intent
+        extracted = self.ai_extracted or {}
+
+        matches = []
+        if intent in ("property_sale", "property_rent") and (
+            "product.real_estate" in self.env
+        ):
+            matches.extend(self._match_real_estate(intent, extracted))
+        elif intent in ("service", "promotion") and (
+            "product.template" in self.env
+        ):
+            matches.extend(self._match_services(intent, extracted))
+
+        suggestion_vals = [
+            {
+                "lead_id": self.id,
+                "res_model": match.get("res_model"),
+                "res_id": match.get("res_id"),
+                "match_type": match.get("match_type") or "otro",
+                "score": match.get("score") or 0.0,
+                "reason": match.get("reason") or "",
+            }
+            for match in matches
+            if isinstance(match, dict)
+            and match.get("res_model")
+            and match.get("res_id")
+        ]
+        if not suggestion_vals:
+            return self.env["mailbox.lead.suggestion"]
+        return self.env["mailbox.lead.suggestion"].create(suggestion_vals)
+
+    # Max service-catalog candidates returned by the service source.
+    _SERVICES_TOP_N = 5
+
+    def _svc_extract_keywords(self, extracted):
+        """Build a normalized keyword bag from the AI free-text fields.
+
+        Tokens are lowercased, accent-stripped and filtered to >3 chars so
+        ``asesoría`` matches ``asesoria``, and short stop-words are dropped.
+        """
+        parts = [
+            (extracted or {}).get("clean_summary"),
+            (extracted or {}).get("notes"),
+            (extracted or {}).get("property_category"),
+            (extracted or {}).get("operation"),
+        ]
+        keywords = set()
+        for part in parts:
+            if not part:
+                continue
+            for word in str(part).lower().split():
+                cleaned = "".join(
+                    c
+                    for c in unicodedata.normalize("NFD", word)
+                    if unicodedata.category(c) != "Mn" and c.isalnum()
+                )
+                if len(cleaned) > 3:
+                    keywords.add(cleaned)
+        return keywords
+
+    def _match_services(self, intent, extracted):
+        """Retrieve and rank ``product.template`` service candidates for this lead.
+
+        Matches the AI extraction against the service catalog (``product.template``
+        of type ``service``) by normalized keyword overlap and ranks by the number
+        of keyword hits. Returns suggestion value dicts for ``_run_matching`` to
+        materialize. Degrades to ``[]`` when ``product.template`` is unavailable
+        or no keyword matches.
+        """
+        self.ensure_one()
+        pt = self.env.get("product.template")
+        if pt is None:
+            return []
+
+        keywords = self._svc_extract_keywords(extracted)
+        if not keywords:
+            return []
+
+        domain = [("active", "=", True)]
+        if "type" in pt._fields:
+            domain.append(("type", "=", "service"))
+        candidates = pt.search(domain)
+
+        def _norm(value):
+            return "".join(
+                c
+                for c in unicodedata.normalize("NFD", str(value or "").lower())
+                if unicodedata.category(c) != "Mn"
+            )
+
+        scored = []
+        for prod in candidates:
+            haystack_parts = [prod.name or ""]
+            if "description_sale" in pt._fields:
+                haystack_parts.append(prod.description_sale or "")
+            haystack = _norm(" ".join(haystack_parts))
+            matched = sorted({kw for kw in keywords if kw in haystack})
+            if not matched:
+                continue
+            score = min(1.0, 0.4 + 0.15 * len(matched))
+            scored.append(
+                {
+                    "res_model": "product.template",
+                    "res_id": prod.id,
+                    "match_type": "servicio",
+                    "score": round(score, 2),
+                    "reason": " · ".join(matched[:6]),
+                }
+            )
+
+        scored.sort(key=lambda item: item["score"], reverse=True)
+        return scored[: self._SERVICES_TOP_N]
+        # ------------------------------------------------------------------
+        # AI decantation logic (PR-1: compute + dynamic selection + cron stub)
+        # ------------------------------------------------------------------
     @api.depends("ai_category", "lead_type")
     def _compute_category(self):
         """Effective category: the AI classification wins, otherwise the
@@ -311,13 +496,16 @@ class MailboxLeadGeneration(models.Model):
         """Whitelist of selectable models for ``model_reference``.
 
         Guarantees at least one option so the Reference widget never breaks on
-        an empty selection. Returns the configured dynamic model (when installed)
-        plus the always-available ``product.real_estate``, de-duplicated.
+        an empty selection (a placeholder ``("", "—")`` is returned when no
+        candidate is present). Returns the configured dynamic model plus
+        ``product.real_estate`` (each only when present in the registry),
+        de-duplicated. Comodel-free: never hard-references a missing model.
         """
         choices = []
         ICP = self.env["ir.config_parameter"].sudo()
         dynamic_model = (
-            ICP.get_param("mailbox_lead_generation.dynamic_model") or "product.real_estate"
+            ICP.get_param("mailbox_lead_generation.dynamic_model")
+            or "product.real_estate"
         )
         if dynamic_model in self.env:
             desc = self.env[dynamic_model]._description or dynamic_model
@@ -326,24 +514,46 @@ class MailboxLeadGeneration(models.Model):
             if model in self.env and model not in {key for key, _ in choices}:
                 desc = self.env[model]._description or model
                 choices.append((model, desc))
-        return choices or [("product.real_estate", "Producto Inmobiliario")]
+        return choices or [("", "—")]
 
     def _cron_process_ai_batch(self, *, limit=50):
-        """PR-1 STUB: locate pending records without invoking the AI pipeline.
+        """Process the ``pending`` AI batch atomically, never aborting.
 
-        Safe no-op scheduled action: it searches the ``pending`` batch and logs
-        the count only. The real DB-level lock + AI wiring arrives in PR-2
-        (TASK-PR2-007). Never raises, never changes ``state``.
+        For each pending record: claim it ``pending -> procesando`` with a
+        guarded re-fetch (in-flight lock / dedup against concurrent workers),
+        then run ``_analyze_and_match_properties``. Success -> ``procesado``;
+        failure -> ``error`` (set by the analyzed method) and the batch
+        continues. NEVER raises: one failing record must not abort the batch.
+        Returns the successfully processed recordset.
         """
         domain = [("state", "=", "pending")]
         records = self.search(domain, limit=limit)
+        processed = self.env["mailbox.lead.generation"]
+        for rec in records:
+            # Atomic claim: only proceed if the record is still pending.
+            claimed = self.search(
+                [("id", "=", rec.id), ("state", "=", "pending")], limit=1
+            )
+            if not claimed:
+                continue
+            claimed.state = "procesando"
+            try:
+                claimed._analyze_and_match_properties()
+            except Exception:  # noqa: BLE001 - cron must never abort the batch
+                _logger.exception(
+                    "mailbox.lead.generation: cron AI batch failed for record %s.",
+                    rec.id,
+                )
+                continue
+            processed |= claimed
         _logger.info(
-            "mailbox.lead.generation: _cron_process_ai_batch stub found %d pending "
-            "record(s) (limit=%d). AI pipeline not wired yet (PR-2).",
+            "mailbox.lead.generation: _cron_process_ai_batch processed %d/%d "
+            "pending record(s) (limit=%d).",
+            len(processed),
             len(records),
             limit,
         )
-        return records
+        return processed
 
     def _get_or_create_partner(self):
         """Return an existing partner for this record's email, or create one."""

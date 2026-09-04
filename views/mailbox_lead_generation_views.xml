@@ -64,12 +64,25 @@
                         </group>
                         <group string="Clasificación">
                             <field name="lead_type"/>
-                            <field name="property_ids" widget="many2many_tags"/>
                         </group>
                     </group>
-                    <group string="Contenido">
-                        <field name="body_html" nolabel="1" colspan="2"/>
-                    </group>
+                        <group string="Sugerencias de coincidencia">
+                            <field name="suggestion_ids" nolabel="1" colspan="2" readonly="1">
+                                <list create="false" delete="false">
+                                    <field name="match_type"/>
+                                    <field name="record_ref"/>
+                                    <field name="score"/>
+                                    <field name="state" widget="badge"
+                                           decoration-info="state == 'suggested'"
+                                           decoration-success="state == 'accepted'"
+                                           decoration-danger="state == 'rejected'"/>
+                                    <field name="reason" optional="hide"/>
+                                </list>
+                            </field>
+                        </group>
+                        <group string="Contenido">
+                            <field name="body_html" nolabel="1" colspan="2"/>
+                        </group>
                     <group string="Salida">
                         <field name="crm_lead_id"/>
                     </group>
