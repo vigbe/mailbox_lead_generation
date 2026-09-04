@@ -21,3 +21,6 @@ dist/
 
 # Pi launcher script (per-project helper, not versioned)
 pi
+
+# CodeGraph index
+.codegraph/

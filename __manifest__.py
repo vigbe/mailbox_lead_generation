@@ -1,19 +1,27 @@
 {
-    "name": "Mail Box Lead Generation",
-    "version": "19.0.1.1.0",
-    "category": "Tools",
-    "summary": "Bandeja de decantación de correos inmobiliarios",
+    "name": "Mailbox Lead Generation",
+    "version": "19.0.1.2.0",
+    "category": "Sales/CRM",
+    "summary": "Email triage inbox that turns incoming mail into clean CRM leads",
     "description": """
-            Mail Box Lead Generation
-            ========================
-            Bandeja de decantación (inbox / pre-stage) para correos inmobiliarios.
+                Mailbox Lead Generation
+                ========================
 
-            Cada correo entrante (vía fetchmail.server con modelo mailbox.lead.generation)
-            crea un registro que se clasifica por dirección de destino en consulta
-            o captación, y luego puede convertirse en un crm.lead limpio.
-        """,
-    "author": "ia-prop.com",
-    "website": "https://ia-prop.com",
+                Published for Odoo 16.0, 17.0, 18.0 and 19.0 (Community and
+                Enterprise).
+
+                A decantation inbox (pre-stage) for incoming email. Every message
+                received through an incoming mail server (fetchmail targeting the
+                mailbox.lead.generation model) becomes a record that is classified
+                by destination address (inquiry or acquisition), optionally triaged
+                by an AI provider (any OpenAI-compatible endpoint), matched against
+                your property or service catalog, and then converted into a clean
+                crm.lead. Spam is rejected before it ever reaches your pipeline.
+            """,
+    "author": "Victor Bastías Escobar",
+    "website": "https://vicbas.com",
+    "support": "contacto@vicbas.com",
+    "maintainer": "Victor Bastías Escobar",
     "license": "LGPL-3",
     "depends": [
         "base",
@@ -29,9 +37,12 @@
     ],
     "demo": [],
     "assets": {},
-    "installable": True,
-    "application": True,
-    "auto_install": False,
+        "installable": True,
+        "application": True,
+        "auto_install": False,
+        "images": [
+            "static/description/thumbnail.png",
+        ],
     "external_dependencies": {
         "python": [
             "requests",
