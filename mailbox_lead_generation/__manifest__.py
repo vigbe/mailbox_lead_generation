@@ -1,7 +1,7 @@
 # Odoo __manifest__.py is a bare dict literal (read via ast.literal_eval);
 # the "unused expression" warning is an unavoidable false positive.
 # pyright: reportUnusedExpression=false
-{
+{  # noqa: B018  # Odoo manifest: bare dict literal read via ast.literal_eval
     "name": "Mailbox Lead Generation",
     "version": "19.0.1.2.0",
     "category": "Sales/CRM",

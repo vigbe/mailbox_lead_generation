@@ -445,7 +445,7 @@ class MailboxLeadGeneration(models.Model):
         if not keywords:
             return []
 
-        domain = [("active", "=", True)]
+        domain: list[tuple[str, str, object]] = [("active", "=", True)]
         if "type" in pt._fields:
             domain.append(("type", "=", "service"))
         candidates = pt.search(domain)

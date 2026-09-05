@@ -4,7 +4,6 @@ import json
 import logging
 
 import requests
-
 from odoo import models
 from odoo.tools import html2plaintext
 

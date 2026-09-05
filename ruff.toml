@@ -1,0 +1,4 @@
+# Odoo addons: __init__.py imports are side-effect registrations
+# (models/controllers/tests), so "imported but unused" is expected.
+[lint.per-file-ignores]
+"**/__init__.py" = ["F401"]
