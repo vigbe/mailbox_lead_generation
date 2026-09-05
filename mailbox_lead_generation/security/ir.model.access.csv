@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_mailbox_lead_generation_user,mailbox.lead.generation.user,model_mailbox_lead_generation,group_mailbox_lead_generation_user,1,1,1,0
+access_mailbox_lead_generation_manager,mailbox.lead.generation.manager,model_mailbox_lead_generation,group_mailbox_lead_generation_manager,1,1,1,1
+access_mailbox_lead_generation_settings_user,res.config.settings.user.mailbox.lead.generation,base.model_res_config_settings,group_mailbox_lead_generation_user,1,1,1,0
+access_mailbox_lead_generation_settings_manager,res.config.settings.manager.mailbox.lead.generation,base.model_res_config_settings,group_mailbox_lead_generation_manager,1,1,1,1
+access_mailbox_lead_suggestion_user,mailbox.lead.suggestion.user,model_mailbox_lead_suggestion,group_mailbox_lead_generation_user,1,0,1,0
+access_mailbox_lead_suggestion_manager,mailbox.lead.suggestion.manager,model_mailbox_lead_suggestion,group_mailbox_lead_generation_manager,1,1,1,1

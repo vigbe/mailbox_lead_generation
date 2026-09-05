@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_mailbox_lead_generation" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.mailbox.lead.generation</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base_setup.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <!-- Odoo 19: insert a dedicated app block before the first existing
+                 app (base_setup general settings). Do not rely on legacy
+                 div.settings, which no longer exists in the base settings form. -->
+            <xpath expr="//app[1]" position="before">
+                <app string="Mail Box Lead Generation" name="mailbox_lead_generation"
+                     data-key="mailbox_lead_generation" groups="base.group_system">
+
+                    <block title="Clasificación de correos"
+                           id="mailbox_lead_generation_classification_block">
+                        <setting id="mailbox_email_consultas_setting"
+                                 string="Emails de Consulta"
+                                 help="Direcciones de destino (separadas por comas) que se clasifican como «consulta» (inquilino/comprador interesado).">
+                            <field name="mailbox_email_consultas"
+                                   placeholder="consultas@tudominio.com"/>
+                        </setting>
+                        <setting id="mailbox_email_captacion_setting"
+                                 string="Emails de Captación"
+                                 help="Direcciones de destino (separadas por comas) que se clasifican como «captación» (propietario ofreciendo una propiedad).">
+                            <field name="mailbox_email_captacion"
+                                   placeholder="captacion@tudominio.com"/>
+                        </setting>
+                    </block>
+
+                    <block title="Decantación IA"
+                           id="mailbox_lead_generation_ai_decantation_block">
+                        <setting id="mailbox_ai_provider_setting"
+                                 string="Proveedor IA"
+                                 help="Identificador del proveedor OpenAI-compatible a usar (default: openai).">
+                            <field name="mailbox_ai_provider"
+                                   placeholder="openai"/>
+                        </setting>
+                        <setting id="mailbox_ai_api_key_setting"
+                                 string="API key IA"
+                                 help="Clave de API del proveedor. Vacía = IA deshabilitada (registros pasan a «error»).">
+                            <field name="mailbox_ai_api_key" password="True"
+                                   placeholder="sk-..."/>
+                        </setting>
+                        <setting id="mailbox_ai_model_setting"
+                                 string="Modelo IA"
+                                 help="Nombre del modelo a invocar (default: gpt-4o-mini).">
+                            <field name="mailbox_ai_model"
+                                   placeholder="gpt-4o-mini"/>
+                        </setting>
+                        <setting id="mailbox_ai_base_url_setting"
+                                 string="Base URL IA"
+                                 help="URL base del endpoint OpenAI-compatible. Vacío = endpoint por defecto del proveedor.">
+                            <field name="mailbox_ai_base_url"
+                                   placeholder="https://api.openai.com/v1"/>
+                        </setting>
+                        <setting id="mailbox_ai_max_tokens_setting"
+                                 string="Máx. tokens"
+                                 help="Cantidad máxima de tokens de la respuesta IA (default: 1000).">
+                            <field name="mailbox_ai_max_tokens"/>
+                        </setting>
+                        <setting id="mailbox_ai_timeout_setting"
+                                 string="Timeout (s)"
+                                 help="Timeout en segundos por llamada HTTP a la IA (default: 30).">
+                            <field name="mailbox_ai_timeout"/>
+                        </setting>
+                        <setting id="mailbox_ai_retries_setting"
+                                 string="Reintentos"
+                                 help="Reintentos ante fallos de red/parseo por registro (default: 2).">
+                            <field name="mailbox_ai_retries"/>
+                        </setting>
+                        <setting id="mailbox_dynamic_model_setting"
+                                 string="Modelo dinámico"
+                                 help="Modelo Odoo contra el que se resuelve el matching IA (default: product.real_estate).">
+                            <field name="mailbox_dynamic_model"
+                                   placeholder="product.real_estate"/>
+                        </setting>
+                    </block>
+
+                </app>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        Decantación IA — Scheduled Action (PR-1 STUB).
+
+        In PR-1 the bound method ``_cron_process_ai_batch`` is a safe no-op: it
+        only locates ``pending`` records and logs the count. The real DB-level
+        lock + AI pipeline wiring arrives in PR-2 (TASK-PR2-007).
+
+        Odoo 19: numbercall/doall were removed from ir.cron. A cron now repeats
+        forever by default while active (driven by interval_number/interval_type);
+        the old numbercall=-1 (infinite) is now the default behavior.
+    -->
+    <record id="cron_mailbox_lead_generation_ai_decantation" model="ir.cron">
+        <field name="name">Mail Box Lead Generation: Decantación IA</field>
+        <field name="model_id" ref="model_mailbox_lead_generation"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_process_ai_batch(limit=50)</field>
+        <field name="user_id" ref="base.user_root"/>
+        <field name="interval_number">5</field>
+        <field name="interval_type">minutes</field>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>
