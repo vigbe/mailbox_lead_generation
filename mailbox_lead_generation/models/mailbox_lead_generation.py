@@ -375,9 +375,7 @@ class MailboxLeadGeneration(models.Model):
             "product.real_estate" in self.env
         ):
             matches.extend(self._match_real_estate(intent, extracted))
-        elif intent in ("service", "promotion") and (
-            "product.template" in self.env
-        ):
+        elif intent in ("service", "promotion") and ("product.template" in self.env):
             matches.extend(self._match_services(intent, extracted))
 
         suggestion_vals = [
@@ -482,6 +480,7 @@ class MailboxLeadGeneration(models.Model):
         # ------------------------------------------------------------------
         # AI decantation logic (PR-1: compute + dynamic selection + cron stub)
         # ------------------------------------------------------------------
+
     @api.depends("ai_category", "lead_type")
     def _compute_category(self):
         """Effective category: the AI classification wins, otherwise the

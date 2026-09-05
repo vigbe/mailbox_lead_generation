@@ -40,12 +40,12 @@
     ],
     "demo": [],
     "assets": {},
-        "installable": True,
-        "application": True,
-        "auto_install": False,
-        "images": [
-            "static/description/thumbnail.png",
-        ],
+    "installable": True,
+    "application": True,
+    "auto_install": False,
+    "images": [
+        "static/description/thumbnail.png",
+    ],
     "external_dependencies": {
         "python": [
             "requests",
