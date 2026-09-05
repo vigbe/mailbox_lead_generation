@@ -3,7 +3,7 @@
 # pyright: reportUnusedExpression=false
 {  # noqa: B018  # Odoo manifest: bare dict literal read via ast.literal_eval
     "name": "Mailbox Lead Generation",
-    "version": "19.0.1.2.0",
+    "version": "17.0.1.2.0",
     "category": "Sales/CRM",
     "summary": "Email triage inbox that turns incoming mail into clean CRM leads",
     "description": """
