@@ -5,7 +5,7 @@
         <field name="name">mailbox.lead.suggestion.list</field>
         <field name="model">mailbox.lead.suggestion</field>
         <field name="arch" type="xml">
-            <list string="Sugerencias de coincidencia">
+            <tree string="Sugerencias de coincidencia">
                 <field name="lead_id"/>
                 <field name="match_type"/>
                 <field name="record_ref"/>
@@ -15,7 +15,7 @@
                        decoration-success="state == 'accepted'"
                        decoration-danger="state == 'rejected'"/>
                 <field name="reason" optional="hide"/>
-            </list>
+            </tree>
         </field>
     </record>
 
@@ -75,7 +75,7 @@
     <record id="mailbox_lead_suggestion_action" model="ir.actions.act_window">
         <field name="name">Sugerencias de coincidencia</field>
         <field name="res_model">mailbox.lead.suggestion</field>
-        <field name="view_mode">list,form</field>
+        <field name="view_mode">tree,form</field>
     </record>
 
     <!-- MENU (under the existing root menu) -->
