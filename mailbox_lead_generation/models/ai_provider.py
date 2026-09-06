@@ -21,8 +21,8 @@ _AI_CATEGORY_DOMAIN = ("lead", "captacion", "servicio", "otro")
 # The values are intentionally English-stable literals so the domain-agnostic
 # system prompt never emits a Spanish vertical term (e.g. "arriendo").
 _AI_INTENT_DOMAIN = (
-    "property_sale",
-    "property_rent",
+    "purchase",
+    "rent",
     "service",
     "promotion",
     "other",
@@ -164,7 +164,7 @@ class MailboxLeadGenerationAIProvider(models.AbstractModel):
         email_captacion = ICP.get_param("mailbox_lead_generation.email_captacion") or ""
         dynamic_model = (
             ICP.get_param("mailbox_lead_generation.dynamic_model")
-            or "product.real_estate"
+            or "product.template"
         )
         catalog_label = ""
         if dynamic_model in self.env:
@@ -189,26 +189,27 @@ class MailboxLeadGenerationAIProvider(models.AbstractModel):
             "Routing context:\n"
             f"- Emails addressed to {email_consultas} express inbound client "
             "interest (a prospective client asking about an item or service).\n"
-            f"- Emails addressed to {email_captacion} come from an owner offering "
-            f"an item for the catalog.{catalog_clause}\n"
+            f"- Emails addressed to {email_captacion} come from a third "
+            f"party offering an item or service for the catalog."
+            f"{catalog_clause}\n"
             "\n"
             "Analyze the email and return a JSON object with EXACTLY these "
             "keys:\n"
             '- "category": one of "lead", "captacion", "servicio", '
             '"otro".\n'
-            '- "intent": one of "property_sale", "property_rent", '
+            '- "intent": one of "purchase", "rent", '
             '"service", "promotion", "other".\n'
             '- "confidence": a number between 0 and 1.\n'
             '- "extracted_data": an object with any of: contact_name, '
             "contact_phone, contact_email, operation, location, budget, "
-            "property_category, notes, clean_summary.\n"
+            "item_category, quantity, notes, clean_summary.\n"
             "\n"
             "Rules:\n"
             '- "category" "lead" = inbound client interest; "captacion" = '
-            'an owner offering an item; "servicio" = a request for a service; '
-            '"otro" = none of the above.\n'
-            '- "intent" "property_sale" = the client wants to buy an item; '
-            '"property_rent" = the client wants to rent an item; "service" = '
+            'a third party offering an item or service; "servicio" = a '
+            'request for a service; "otro" = none of the above.\n'
+            '- "intent" "purchase" = the client wants to buy an item/product; '
+            '"rent" = the client wants to rent an item/product; "service" = '
             'the client wants a service; "promotion" = the client wants to '
             'highlight an existing listing; "other" = undetermined.\n'
             '- Always include "clean_summary": a short neutral summary of '

@@ -32,7 +32,15 @@ class MailboxLeadSuggestion(models.Model):
     )
     res_id = fields.Integer(string="ID registro", required=True)
     match_type = fields.Selection(
-        [("propiedad", "Propiedad"), ("servicio", "Servicio"), ("otro", "Otro")],
+        [
+            ("propiedad", "Propiedad"),
+            ("producto", "Producto"),
+            # ``servicio`` is no longer emitted by the matching engine, but it
+            # stays in the domain so suggestions stored by older versions of
+            # the module keep rendering their label.
+            ("servicio", "Servicio"),
+            ("otro", "Otro"),
+        ],
         string="Tipo de coincidencia",
         required=True,
         default="otro",
