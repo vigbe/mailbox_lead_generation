@@ -16,13 +16,13 @@
                            id="mailbox_lead_generation_classification_block">
                         <setting id="mailbox_email_consultas_setting"
                                  string="Emails de Consulta"
-                                 help="Direcciones de destino (separadas por comas) que se clasifican como «consulta» (inquilino/comprador interesado).">
+                                 help="Direcciones de destino (separadas por comas) que se clasifican como «consulta» (comprador/arrendatario interesado).">
                             <field name="mailbox_email_consultas"
                                    placeholder="consultas@tudominio.com"/>
                         </setting>
                         <setting id="mailbox_email_captacion_setting"
                                  string="Emails de Captación"
-                                 help="Direcciones de destino (separadas por comas) que se clasifican como «captación» (propietario ofreciendo una propiedad).">
+                                 help="Direcciones de destino (separadas por comas) que se clasifican como «captación» (un tercero ofreciendo un producto o servicio).">
                             <field name="mailbox_email_captacion"
                                    placeholder="captacion@tudominio.com"/>
                         </setting>
@@ -71,9 +71,9 @@
                         </setting>
                         <setting id="mailbox_dynamic_model_setting"
                                  string="Modelo dinámico"
-                                 help="Modelo Odoo contra el que se resuelve el matching IA (default: product.real_estate).">
+                                 help="Modelo Odoo contra el que se resuelve el matching IA (default: product.template).">
                             <field name="mailbox_dynamic_model"
-                                   placeholder="product.real_estate"/>
+                                   placeholder="product.template"/>
                         </setting>
                     </block>
 
