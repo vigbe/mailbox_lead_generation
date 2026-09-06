@@ -13,13 +13,13 @@ class ResConfigSettings(models.TransientModel):
         string="Emails de Consulta",
         config_parameter="mailbox_lead_generation.email_consultas",
         help="Direcciones de destino (separadas por comas) que se clasifican "
-        'como "consulta" (inquilino/comprador interesado).',
+        'como "consulta" (comprador/arrendatario interesado).',
     )
     mailbox_email_captacion = fields.Char(
         string="Emails de Captación",
         config_parameter="mailbox_lead_generation.email_captacion",
         help="Direcciones de destino (separadas por comas) que se clasifican "
-        'como "captación" (propietario ofreciendo una propiedad).',
+        'como "captación" (un tercero ofreciendo un producto o servicio).',
     )
 
     # ------------------------------------------------------------------
@@ -72,7 +72,7 @@ class ResConfigSettings(models.TransientModel):
     mailbox_dynamic_model = fields.Char(
         string="Modelo dinámico",
         config_parameter="mailbox_lead_generation.dynamic_model",
-        default="product.real_estate",
+        default="product.template",
         help="Modelo Odoo contra el que se resuelve el matching de la IA "
-        "(default: product.real_estate).",
+        "(default: product.template).",
     )

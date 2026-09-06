@@ -18,8 +18,10 @@ class TestRealEstateMatching(TransactionCase):
     """Phase C2: real-estate retrieval engine (``_match_real_estate``).
 
     Exercises candidate filtering (operation / comuna / tipo / state exclusion),
-    ranking, top-N, and the end-to-end ``_run_matching`` -> suggestion creation
-    -> ``property_ids`` mirror flow, against real ``product.real_estate`` records.
+    ranking, top-N, the routing of the neutral ``item_category`` extraction key
+    into the tipo filter (with the legacy ``property_category`` fallback), and
+    the end-to-end ``_run_matching`` -> suggestion creation flow, against real
+    ``product.real_estate`` records.
     """
 
     @classmethod
@@ -94,19 +96,19 @@ class TestRealEstateMatching(TransactionCase):
     # ------------------------------------------------------------------
     # Retrieval
     # ------------------------------------------------------------------
-    def test_match_property_sale_returns_ventas_in_comuna(self):
+    def test_match_purchase_returns_ventas_in_comuna(self):
         self._skip_if_no_re()
         lead = self.Lead.create(
             {
                 "name": "busco depto Las Condes",
-                "ai_intent": "property_sale",
+                "ai_intent": "purchase",
                 "ai_extracted": {
                     "location": "Las Condes",
-                    "property_category": "departamento",
+                    "item_category": "departamento",
                 },
             }
         )
-        matches = lead._match_real_estate("property_sale", lead.ai_extracted or {})
+        matches = lead._match_real_estate("purchase", lead.ai_extracted or {})
         ids = [m["res_id"] for m in matches]
         self.assertIn(self.prop_venta_lascondes_depto2.id, ids)
         # arriendo and sold must be excluded by operacion + state filters
@@ -122,16 +124,16 @@ class TestRealEstateMatching(TransactionCase):
             self.assertEqual(m["match_type"], "propiedad")
             self.assertTrue(0.0 <= m["score"] <= 1.0)
 
-    def test_match_property_rent_filters_arriendo(self):
+    def test_match_rent_filters_arriendo(self):
         self._skip_if_no_re()
         lead = self.Lead.create(
             {
                 "name": "arriendo Las Condes",
-                "ai_intent": "property_rent",
+                "ai_intent": "rent",
                 "ai_extracted": {"location": "Las Condes"},
             }
         )
-        matches = lead._match_real_estate("property_rent", lead.ai_extracted or {})
+        matches = lead._match_real_estate("rent", lead.ai_extracted or {})
         ids = [m["res_id"] for m in matches]
         self.assertIn(self.prop_arriendo_lascondes_depto3.id, ids)
         self.assertNotIn(self.prop_venta_lascondes_depto2.id, ids)
@@ -154,11 +156,11 @@ class TestRealEstateMatching(TransactionCase):
         lead = self.Lead.create(
             {
                 "name": "topn",
-                "ai_intent": "property_sale",
+                "ai_intent": "purchase",
                 "ai_extracted": {"location": "Las Condes"},
             }
         )
-        matches = lead._match_real_estate("property_sale", lead.ai_extracted or {})
+        matches = lead._match_real_estate("purchase", lead.ai_extracted or {})
         self.assertLessEqual(len(matches), self.Lead._RE_TOP_N)
 
     def test_run_matching_creates_suggestions(self):
@@ -166,7 +168,7 @@ class TestRealEstateMatching(TransactionCase):
         lead = self.Lead.create(
             {
                 "name": "e2e",
-                "ai_intent": "property_sale",
+                "ai_intent": "purchase",
                 "ai_extracted": {"location": "Las Condes"},
             }
         )
@@ -180,3 +182,36 @@ class TestRealEstateMatching(TransactionCase):
             self.prop_venta_lascondes_depto2.id,
             lead.suggestion_ids.mapped("res_id"),
         )
+
+    # ------------------------------------------------------------------
+    # item_category routing (neutral extraction key + legacy fallback)
+    # ------------------------------------------------------------------
+    def test_match_purchase_routes_item_category_to_tipo(self):
+        self._skip_if_no_re()
+        lead = self.Lead.create(
+            {
+                "name": "busco casa",
+                "ai_intent": "purchase",
+                "ai_extracted": {"item_category": "casa"},
+            }
+        )
+        matches = lead._match_real_estate("purchase", lead.ai_extracted or {})
+        ids = [m["res_id"] for m in matches]
+        self.assertIn(self.prop_venta_providencia_casa4.id, ids)
+        # Non-casa sale listings are excluded by the tipo filter routed
+        # from the neutral ``item_category`` key.
+        self.assertNotIn(self.prop_venta_lascondes_depto2.id, ids)
+
+    def test_match_purchase_legacy_property_category_still_maps(self):
+        self._skip_if_no_re()
+        lead = self.Lead.create(
+            {
+                "name": "busco casa",
+                "ai_intent": "purchase",
+                "ai_extracted": {"property_category": "casa"},
+            }
+        )
+        matches = lead._match_real_estate("purchase", lead.ai_extracted or {})
+        ids = [m["res_id"] for m in matches]
+        self.assertIn(self.prop_venta_providencia_casa4.id, ids)
+        self.assertNotIn(self.prop_venta_lascondes_depto2.id, ids)

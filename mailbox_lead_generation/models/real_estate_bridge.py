@@ -84,10 +84,11 @@ class MailboxLeadGenerationRealEstateBridge(models.Model):
     def _match_real_estate(self, intent, extracted):
         """Retrieve and rank ``product.real_estate`` candidates for this lead.
 
-        Maps the AI intent to a listing operation (sale/rent), filters live
-        candidates by the strong signals (operation, comuna, tipo) and ranks
-        them by the weaker ones (bedrooms, budget). Returns a list of
-        suggestion value dicts for ``_run_matching`` to materialize.
+        Maps the AI intent to a listing operation (``purchase`` -> venta,
+        ``rent`` -> arriendo), filters live candidates by the strong signals
+        (operation, comuna, tipo) and ranks them by the weaker ones
+        (bedrooms, budget). Returns a list of suggestion value dicts for
+        ``_run_matching`` to materialize.
 
         Robust to a missing comodel or unknown price fields: it degrades to
         ``[]`` / skips the relevant signal instead of raising.
@@ -99,7 +100,7 @@ class MailboxLeadGenerationRealEstateBridge(models.Model):
 
         extracted = extracted or {}
         # Buyer intent maps to the listing side: wants to buy -> sale listings.
-        operacion = "venta" if intent == "property_sale" else "arriendo"
+        operacion = "venta" if intent == "purchase" else "arriendo"
         domain = [
             ("active", "=", True),
             ("state", "in", ["available", "reserved"]),
@@ -110,7 +111,12 @@ class MailboxLeadGenerationRealEstateBridge(models.Model):
         if location:
             domain.append(("comuna", "ilike", location))
 
-        tipo = self._re_map_tipo_propiedad(extracted.get("property_category"))
+        # ``item_category`` is the neutral extraction key; the legacy
+        # ``property_category`` is kept as a fallback for rows stored by older
+        # module versions.
+        tipo = self._re_map_tipo_propiedad(
+            extracted.get("item_category") or extracted.get("property_category")
+        )
         if tipo:
             domain.append(("tipo_propiedad", "=", tipo))
 

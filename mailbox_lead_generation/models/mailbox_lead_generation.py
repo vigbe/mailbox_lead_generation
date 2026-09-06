@@ -141,8 +141,8 @@ class MailboxLeadGeneration(models.Model):
     )
     ai_intent = fields.Selection(
         [
-            ("property_sale", "Propiedad - Compra"),
-            ("property_rent", "Propiedad - Arriendo"),
+            ("purchase", "Producto - Compra"),
+            ("rent", "Producto - Arriendo"),
             ("service", "Servicio"),
             ("promotion", "Destacar publicación"),
             ("other", "Otro"),
@@ -150,7 +150,7 @@ class MailboxLeadGeneration(models.Model):
         string="Intención IA",
         copy=False,
         tracking=True,
-        help="Intención inferida por la IA (compra/arriendo de propiedad, "
+        help="Intención inferida por la IA (compra/arriendo de un producto, "
         "servicio, destacar publicación, otro).",
     )
     ai_extracted = fields.Json(
@@ -347,11 +347,11 @@ class MailboxLeadGeneration(models.Model):
     def _get_matching_sources(self):
         """Return the ACTIVE matching sources as ``(source_key, label)`` tuples.
 
-        Pure registry: no matching logic. ``services`` (``product.template``) is
+        Pure registry: no matching logic. ``products`` (``product.template``) is
         always available; ``real_estate`` is offered only when
         ``real_estate_products`` is installed (model present in the registry).
         """
-        sources = [("services", "Servicios (product.template)")]
+        sources = [("products", "Productos (product.template)")]
         if "product.real_estate" in self.env:
             sources.append(("real_estate", "Propiedades (product.real_estate)"))
         return sources
@@ -359,26 +359,32 @@ class MailboxLeadGeneration(models.Model):
     def _run_matching(self):
         """Run matching for this lead and return the created suggestions.
 
-        Routes by ``ai_intent`` to the applicable source:
-        - property_sale / property_rent -> ``_match_real_estate`` (when installed)
-        - service / promotion -> ``_match_services`` (when product.template exists)
+        Routes by ``ai_intent`` to the applicable sources:
+        - purchase / rent -> ``_match_products`` (when ``product.template``
+          exists) AND ``_match_real_estate`` (only when ``real_estate_products``
+          is installed); both result sets are concatenated so the polymorphic
+          suggestions keep them as separate rows.
+        - service / promotion -> ``_match_products`` (when product.template
+          exists)
 
-        Each returned match dict is materialized into a ``mailbox.lead.suggestion``
-        row. Returns an empty recordset when nothing matches.
+        Each returned match dict is materialized into a
+        ``mailbox.lead.suggestion`` row. Returns an empty recordset when
+        nothing matches.
         """
         self.ensure_one()
         intent = self.ai_intent
         extracted = self.ai_extracted or {}
 
         matches = []
-        if intent in ("property_sale", "property_rent") and (
-            "product.real_estate" in self.env
-        ):
-            matches.extend(self._match_real_estate(intent, extracted))
+        if intent in ("purchase", "rent"):
+            if "product.template" in self.env:
+                matches.extend(self._match_products(intent, extracted))
+            if "product.real_estate" in self.env:
+                matches.extend(self._match_real_estate(intent, extracted))
         elif intent in ("service", "promotion") and (
             "product.template" in self.env
         ):
-            matches.extend(self._match_services(intent, extracted))
+            matches.extend(self._match_products(intent, extracted))
 
         suggestion_vals = [
             {
@@ -398,20 +404,24 @@ class MailboxLeadGeneration(models.Model):
             return self.env["mailbox.lead.suggestion"]
         return self.env["mailbox.lead.suggestion"].create(suggestion_vals)
 
-    # Max service-catalog candidates returned by the service source.
-    _SERVICES_TOP_N = 5
+    # Max product-catalog candidates returned by the product source.
+    _PRODUCTS_TOP_N = 5
 
-    def _svc_extract_keywords(self, extracted):
+    def _prod_extract_keywords(self, extracted):
         """Build a normalized keyword bag from the AI free-text fields.
 
         Tokens are lowercased, accent-stripped and filtered to >3 chars so
         ``asesoría`` matches ``asesoria``, and short stop-words are dropped.
+        Reads the neutral ``item_category`` extraction key, with the legacy
+        ``property_category`` kept as a fallback for rows stored by older
+        module versions.
         """
+        extracted = extracted or {}
         parts = [
-            (extracted or {}).get("clean_summary"),
-            (extracted or {}).get("notes"),
-            (extracted or {}).get("property_category"),
-            (extracted or {}).get("operation"),
+            extracted.get("clean_summary"),
+            extracted.get("notes"),
+            extracted.get("item_category") or extracted.get("property_category"),
+            extracted.get("operation"),
         ]
         keywords = set()
         for part in parts:
@@ -427,27 +437,26 @@ class MailboxLeadGeneration(models.Model):
                     keywords.add(cleaned)
         return keywords
 
-    def _match_services(self, intent, extracted):
-        """Retrieve and rank ``product.template`` service candidates for this lead.
+    def _match_products(self, intent, extracted):
+        """Retrieve and rank ``product.template`` candidates for this lead.
 
-        Matches the AI extraction against the service catalog (``product.template``
-        of type ``service``) by normalized keyword overlap and ranks by the number
-        of keyword hits. Returns suggestion value dicts for ``_run_matching`` to
-        materialize. Degrades to ``[]`` when ``product.template`` is unavailable
-        or no keyword matches.
+        Matches the AI extraction against the product catalog
+        (``product.template`` of ANY type: goods ``consu`` and ``service``)
+        by normalized keyword overlap and ranks by the number of keyword
+        hits. Returns suggestion value dicts for ``_run_matching`` to
+        materialize. Degrades to ``[]`` when ``product.template`` is
+        unavailable or no keyword matches.
         """
         self.ensure_one()
         pt = self.env.get("product.template")
         if pt is None:
             return []
 
-        keywords = self._svc_extract_keywords(extracted)
+        keywords = self._prod_extract_keywords(extracted)
         if not keywords:
             return []
 
         domain: list[tuple[str, str, object]] = [("active", "=", True)]
-        if "type" in pt._fields:
-            domain.append(("type", "=", "service"))
         candidates = pt.search(domain)
 
         def _norm(value):
@@ -471,17 +480,18 @@ class MailboxLeadGeneration(models.Model):
                 {
                     "res_model": "product.template",
                     "res_id": prod.id,
-                    "match_type": "servicio",
+                    "match_type": "producto",
                     "score": round(score, 2),
                     "reason": " · ".join(matched[:6]),
                 }
             )
 
         scored.sort(key=lambda item: item["score"], reverse=True)
-        return scored[: self._SERVICES_TOP_N]
+        return scored[: self._PRODUCTS_TOP_N]
         # ------------------------------------------------------------------
         # AI decantation logic (PR-1: compute + dynamic selection + cron stub)
         # ------------------------------------------------------------------
+
     @api.depends("ai_category", "lead_type")
     def _compute_category(self):
         """Effective category: the AI classification wins, otherwise the
@@ -507,7 +517,7 @@ class MailboxLeadGeneration(models.Model):
         ICP = self.env["ir.config_parameter"].sudo()
         dynamic_model = (
             ICP.get_param("mailbox_lead_generation.dynamic_model")
-            or "product.real_estate"
+            or "product.template"
         )
         if dynamic_model in self.env:
             desc = self.env[dynamic_model]._description or dynamic_model
