@@ -35,16 +35,16 @@ class TestMailboxLeadSuggestion(TransactionCase):
                 "lead_id": lead.id,
                 "res_model": "product.template",
                 "res_id": product.id,
-                "match_type": "servicio",
+                "match_type": "producto",
                 "score": 0.42,
-                "reason": "Servicio coincidente por intent.",
+                "reason": "Producto coincidente por intent.",
             }
         )
         self.assertTrue(suggestion.id)
         self.assertTrue(suggestion.record_ref)
         self.assertEqual(suggestion.record_ref._name, "product.template")
         self.assertEqual(suggestion.record_ref.id, product.id)
-        self.assertEqual(suggestion.match_type, "servicio")
+        self.assertEqual(suggestion.match_type, "producto")
         self.assertAlmostEqual(suggestion.score, 0.42, places=2)
         self.assertEqual(suggestion.state, "suggested")
 
@@ -87,10 +87,10 @@ class TestMailboxLeadSuggestion(TransactionCase):
     # ------------------------------------------------------------------
     # Source registry (_get_matching_sources)
     # ------------------------------------------------------------------
-    def test_get_matching_sources_services_always(self):
+    def test_get_matching_sources_products_always(self):
         sources = self.Lead._get_matching_sources()
         keys = [key for key, _ in sources]
-        self.assertIn("services", keys)
+        self.assertIn("products", keys)
         self.assertIsInstance(sources, list)
 
     def test_get_matching_sources_real_estate_conditional(self):
@@ -146,7 +146,7 @@ class TestMailboxLeadSuggestion(TransactionCase):
                     "lead_id": lead.id,
                     "res_model": "product.template",
                     "res_id": svc.id,
-                    "match_type": "servicio",
+                    "match_type": "producto",
                 }
             )
         self.assertIn(prop, lead.property_ids)

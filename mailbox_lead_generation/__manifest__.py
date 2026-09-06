@@ -3,7 +3,7 @@
 # pyright: reportUnusedExpression=false
 {  # noqa: B018  # Odoo manifest: bare dict literal read via ast.literal_eval
     "name": "Mailbox Lead Generation",
-    "version": "19.0.1.2.0",
+    "version": "19.0.1.3.0",
     "category": "Sales/CRM",
     "summary": "Email triage inbox that turns incoming mail into clean CRM leads",
     "description": """
@@ -18,7 +18,9 @@
                 mailbox.lead.generation model) becomes a record that is classified
                 by destination address (inquiry or acquisition), optionally triaged
                 by an AI provider (any OpenAI-compatible endpoint), matched against
-                your property or service catalog, and then converted into a clean
+                your product catalog (any product type), with optional deep
+                matching for real-estate catalogs (real_estate_products) when
+                installed, and then converted into a clean
                 crm.lead. Spam is rejected before it ever reaches your pipeline.
             """,
     "author": "Victor Bastías Escobar",

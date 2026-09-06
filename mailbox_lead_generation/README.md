@@ -3,9 +3,9 @@
 An email triage inbox that turns incoming mail into clean CRM leads. Every
 message received through an incoming mail server (fetchmail) becomes a record
 in a dedicated decantation inbox, gets classified (destination address +
-optional AI), can be matched against your property or service catalog, and is
-converted into a clean `crm.lead` in one click. Spam never pollutes your
-pipeline.
+optional AI), can be matched against your product catalog (`product.template`,
+any product type), and is converted into a clean `crm.lead` in one click. Spam
+never pollutes your pipeline.
 
 > Available on the Odoo Apps Store for Odoo 16.0, 17.0, 18.0 and 19.0 — by
 > [Victor Bastías Escobar](https://vicbas.com).
@@ -15,8 +15,9 @@ pipeline.
   optional AI category and intent
 - **AI (optional):** any OpenAI-compatible endpoint — configurable base URL,
   model, API key, timeout and retries, with a scheduled batch-triage cron
-- **Matching:** suggests properties (`real_estate_products`, optional) or
-  service products (`product.template`) for each email
+- **Matching:** suggests products from your product catalog (`product.template`,
+  any product type) for each email, with optional deep real-estate matching
+  (`real_estate_products`) when that module is installed
 - **Workflow:** new → reviewed → converted to `crm.lead` (or rejected as spam,
   or sent to pending), with full traceability back to the source email
 
@@ -49,8 +50,8 @@ provider credentials.
 
 - The user interface is currently available in Spanish; an English UI is on
   the roadmap.
-- Real-estate and service matching activate only when the corresponding
-  fields/catalogs exist in your database.
+- Product matching works with any `product.template` catalog; the deep
+  real-estate matching activates only when `real_estate_products` is installed.
 
 ## License
 
