@@ -8,12 +8,14 @@ _logger = logging.getLogger(__name__)
 
 
 @tagged("post_install", "-at_install")
-class TestServicesMatching(TransactionCase):
-    """Phase C3: service-catalog matching (``_match_services``).
+class TestProductsMatching(TransactionCase):
+    """Phase C3: product-catalog matching (``_match_products``).
 
-    Exercises keyword extraction (accent normalization), candidate scoring against
-    ``product.template`` service products, type filtering, top-N, and the
-    ``_run_matching`` routing for service intent. Skipped when ``product``
+    Exercises keyword extraction (accent normalization, the neutral
+    ``item_category`` key with the legacy ``property_category`` fallback),
+    candidate scoring against ``product.template`` of ANY type (goods
+    ``consu`` and ``service`` products), top-N, and the ``_run_matching``
+    routing for the service and purchase intents. Skipped when ``product``
     (``product.template``) is not installed.
     """
 
@@ -34,9 +36,10 @@ class TestServicesMatching(TransactionCase):
         cls.svc_destacar = cls.PT.create(
             {"name": "Destacar Anuncio", "type": "service"}
         )
-        # A non-service product that must NOT match under the type=service filter.
-        cls.prod_fisico = cls.PT.create(
-            {"name": "Asesoría Fisica Producto", "type": "consu"}
+        # A goods (``consu``) product: matched too, since the engine is
+        # product-type agnostic.
+        cls.prod_bici = cls.PT.create(
+            {"name": "Bicicleta Montaña Pro", "type": "consu"}
         )
 
     def _skip_if_no_pt(self):
@@ -45,12 +48,25 @@ class TestServicesMatching(TransactionCase):
 
     def test_extract_keywords_normalizes_accents(self):
         self._skip_if_no_pt()
-        kw = self.Lead._svc_extract_keywords({"clean_summary": "Asesoría legal rápida"})
+        kw = self.Lead._prod_extract_keywords(
+            {"clean_summary": "Asesoría legal rápida"}
+        )
         self.assertIn("asesoria", kw)  # accent-stripped
         self.assertIn("legal", kw)
         self.assertIn("rapida", kw)  # accent-stripped from 'rápida'
 
-    def test_match_services_by_keyword(self):
+    def test_extract_keywords_reads_item_category(self):
+        self._skip_if_no_pt()
+        kw = self.Lead._prod_extract_keywords({"item_category": "bicicleta"})
+        self.assertIn("bicicleta", kw)
+        # Legacy rows stored before 19.0.1.3.0 keep feeding keywords through
+        # the old extraction key.
+        kw_legacy = self.Lead._prod_extract_keywords(
+            {"property_category": "bicicleta"}
+        )
+        self.assertIn("bicicleta", kw_legacy)
+
+    def test_match_products_by_keyword_service_type(self):
         self._skip_if_no_pt()
         lead = self.Lead.create(
             {
@@ -61,7 +77,7 @@ class TestServicesMatching(TransactionCase):
                 },
             }
         )
-        matches = lead._match_services("service", lead.ai_extracted or {})
+        matches = lead._match_products("service", lead.ai_extracted or {})
         ids = [m["res_id"] for m in matches]
         self.assertIn(self.svc_legal.id, ids)
         # ranked score-descending
@@ -70,31 +86,33 @@ class TestServicesMatching(TransactionCase):
         )
         for m in matches:
             self.assertEqual(m["res_model"], "product.template")
-            self.assertEqual(m["match_type"], "servicio")
+            self.assertEqual(m["match_type"], "producto")
             self.assertTrue(0.0 <= m["score"] <= 1.0)
 
-    def test_match_services_excludes_non_service_type(self):
+    def test_match_products_includes_goods_type(self):
         self._skip_if_no_pt()
         lead = self.Lead.create(
             {
-                "name": "x",
-                "ai_intent": "service",
-                "ai_extracted": {"clean_summary": "asesoria fisica"},
+                "name": "busca bicicleta",
+                "ai_intent": "purchase",
+                "ai_extracted": {"item_category": "bicicleta"},
             }
         )
-        matches = lead._match_services("service", lead.ai_extracted or {})
+        matches = lead._match_products("purchase", lead.ai_extracted or {})
         ids = [m["res_id"] for m in matches]
-        # 'Asesoría Fisica Producto' is type=consu -> excluded by the filter.
-        self.assertNotIn(self.prod_fisico.id, ids)
+        # 'Bicicleta Montaña Pro' is type=consu -> matched (any product type).
+        self.assertIn(self.prod_bici.id, ids)
+        for m in matches:
+            self.assertEqual(m["match_type"], "producto")
 
-    def test_match_services_no_keywords_returns_empty(self):
+    def test_match_products_no_keywords_returns_empty(self):
         self._skip_if_no_pt()
         lead = self.Lead.create(
             {"name": "x", "ai_intent": "service", "ai_extracted": {}}
         )
-        self.assertEqual(lead._match_services("service", {}), [])
+        self.assertEqual(lead._match_products("service", {}), [])
 
-    def test_run_matching_creates_service_suggestions(self):
+    def test_run_matching_creates_product_suggestions(self):
         self._skip_if_no_pt()
         lead = self.Lead.create(
             {
@@ -106,11 +124,30 @@ class TestServicesMatching(TransactionCase):
         lead._run_matching()
         self.assertTrue(lead.suggestion_ids)
         self.assertTrue(
-            all(s.res_model == "product.template" for s in lead.suggestion_ids)
+            all(
+                s.res_model == "product.template" and s.match_type == "producto"
+                for s in lead.suggestion_ids
+            )
         )
         self.assertIn(self.svc_destacar.id, lead.suggestion_ids.mapped("res_id"))
 
-    def test_match_services_respects_top_n(self):
+    def test_run_matching_purchase_intent_routes_to_products(self):
+        self._skip_if_no_pt()
+        lead = self.Lead.create(
+            {
+                "name": "busca bicicleta",
+                "ai_intent": "purchase",
+                "ai_extracted": {"item_category": "bicicleta"},
+            }
+        )
+        lead._run_matching()
+        product_suggestions = lead.suggestion_ids.filtered(
+            lambda s: s.res_model == "product.template"
+        )
+        self.assertTrue(product_suggestions)
+        self.assertIn(self.prod_bici.id, product_suggestions.mapped("res_id"))
+
+    def test_match_products_respects_top_n(self):
         self._skip_if_no_pt()
         for i in range(10):
             self.PT.create({"name": f"Asesoría Legal Variante {i}", "type": "service"})
@@ -121,5 +158,5 @@ class TestServicesMatching(TransactionCase):
                 "ai_extracted": {"clean_summary": "asesoría legal"},
             }
         )
-        matches = lead._match_services("service", lead.ai_extracted or {})
-        self.assertLessEqual(len(matches), self.Lead._SERVICES_TOP_N)
+        matches = lead._match_products("service", lead.ai_extracted or {})
+        self.assertLessEqual(len(matches), self.Lead._PRODUCTS_TOP_N)

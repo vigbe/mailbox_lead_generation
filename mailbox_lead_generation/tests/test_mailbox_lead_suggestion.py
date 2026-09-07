@@ -35,16 +35,16 @@ class TestMailboxLeadSuggestion(TransactionCase):
                 "lead_id": lead.id,
                 "res_model": "product.template",
                 "res_id": product.id,
-                "match_type": "servicio",
+                "match_type": "producto",
                 "score": 0.42,
-                "reason": "Servicio coincidente por intent.",
+                "reason": "Producto coincidente por intent.",
             }
         )
         self.assertTrue(suggestion.id)
         self.assertTrue(suggestion.record_ref)
         self.assertEqual(suggestion.record_ref._name, "product.template")
         self.assertEqual(suggestion.record_ref.id, product.id)
-        self.assertEqual(suggestion.match_type, "servicio")
+        self.assertEqual(suggestion.match_type, "producto")
         self.assertAlmostEqual(suggestion.score, 0.42, places=2)
         self.assertEqual(suggestion.state, "suggested")
 
@@ -87,19 +87,17 @@ class TestMailboxLeadSuggestion(TransactionCase):
     # ------------------------------------------------------------------
     # Source registry (_get_matching_sources)
     # ------------------------------------------------------------------
-    def test_get_matching_sources_services_always(self):
+    def test_get_matching_sources_products_always(self):
         sources = self.Lead._get_matching_sources()
         keys = [key for key, _ in sources]
-        self.assertIn("services", keys)
+        self.assertIn("products", keys)
         self.assertIsInstance(sources, list)
 
-    def test_get_matching_sources_real_estate_conditional(self):
+    def test_get_matching_sources_products_only(self):
         sources = self.Lead._get_matching_sources()
-        keys = [key for key, _ in sources]
-        if "product.real_estate" in self.env:
-            self.assertIn("real_estate", keys)
-        else:
-            self.assertNotIn("real_estate", keys)
+        self.assertEqual(
+            sources, [("products", "Productos (product.template)")]
+        )
 
     # ------------------------------------------------------------------
     # _run_matching no-op scaffold
@@ -111,43 +109,14 @@ class TestMailboxLeadSuggestion(TransactionCase):
         self.assertEqual(len(result), 0)
 
     # ------------------------------------------------------------------
-    # Computed property_ids mirror (conditional bridge)
+    # Legacy suggestion labels (stored by pre-generic versions)
     # ------------------------------------------------------------------
-    def test_property_ids_mirror_when_real_estate_installed(self):
-        if "product.real_estate" not in self.env:
-            self.skipTest("product.real_estate not installed in this DB")
-        lead_model = self.env["mailbox.lead.generation"]
-        if "property_ids" not in lead_model._fields:
-            self.skipTest("real_estate_bridge not loaded (property_ids absent)")
-        re_model = self.env["product.real_estate"]
-        owner = self.env["res.partner"].create({"name": "Dueño espejo"})
-        prop = re_model.create(
-            {
-                "name": "Depto prueba espejo",
-                "propietario_id": owner.id,
-                "operacion": "venta",
-                "tipo_propiedad": "departamento",
-            }
-        )
-        lead = self._create_lead()
-        self.Suggestion.create(
-            {
-                "lead_id": lead.id,
-                "res_model": "product.real_estate",
-                "res_id": prop.id,
-                "match_type": "propiedad",
-            }
-        )
-        # Non real-estate suggestions must NOT pollute the mirror.
-        if "product.template" in self.env:
-            svc = self.env["product.template"].create({"name": "Servicio extra"})
-            self.Suggestion.create(
-                {
-                    "lead_id": lead.id,
-                    "res_model": "product.template",
-                    "res_id": svc.id,
-                    "match_type": "servicio",
-                }
-            )
-        self.assertIn(prop, lead.property_ids)
-        self.assertEqual(len(lead.property_ids), 1)
+    def test_legacy_match_types_still_render(self):
+        # The engine only emits "producto" now, but old stored rows keep their
+        # labels: the selection domain must retain the legacy keys.
+        valid_keys = {
+            key for key, _ in type(self.Suggestion).match_type.selection
+        }
+        self.assertIn("propiedad", valid_keys)
+        self.assertIn("servicio", valid_keys)
+        self.assertIn("producto", valid_keys)

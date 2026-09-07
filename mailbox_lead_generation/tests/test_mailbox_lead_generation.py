@@ -174,18 +174,19 @@ class TestMailboxLeadGeneration(TransactionCase):
         self.assertIsInstance(choices, list)
         self.assertGreaterEqual(len(choices), 1)
 
-    def test_selection_dynamic_models_includes_real_estate(self):
-        # real_estate_products is a module dependency -> always installed
+    def test_selection_dynamic_models_includes_catalogs(self):
+        # product.template is the product-agnostic default catalog.
         choices = self.MailboxLeadGeneration._selection_dynamic_models()
         keys = [key for key, _ in choices]
-        self.assertIn("product.real_estate", keys)
+        if "product.template" in self.env:
+            self.assertIn("product.template", keys)
 
     def test_selection_dynamic_models_configured_model(self):
         self.ICP.set_param(
-            "mailbox_lead_generation.dynamic_model", "product.real_estate"
+            "mailbox_lead_generation.dynamic_model", "res.partner"
         )
         choices = self.MailboxLeadGeneration._selection_dynamic_models()
-        self.assertIn("product.real_estate", [key for key, _ in choices])
+        self.assertIn("res.partner", [key for key, _ in choices])
 
     def test_selection_dynamic_models_unknown_model(self):
         # Unknown dynamic_model must not crash; always >=1 fallback option
@@ -194,7 +195,9 @@ class TestMailboxLeadGeneration(TransactionCase):
         )
         choices = self.MailboxLeadGeneration._selection_dynamic_models()
         self.assertGreaterEqual(len(choices), 1)
-        self.assertIn("product.real_estate", [key for key, _ in choices])
+        keys = [key for key, _ in choices]
+        if "product.template" in self.env:
+            self.assertIn("product.template", keys)
 
     # --- TASK-PR1-005: actions lifecycle ---
     def test_action_send_to_pending_from_nuevo(self):
@@ -274,8 +277,8 @@ class TestMailboxLeadGeneration(TransactionCase):
                 "phone": "+56912345678",
                 "email": "juan@example.com",
                 "operation": "compra",
-                "model_reference_id": "Depto Las Condes",
-                "clean_summary": "Cliente busca propiedad en zona centrica.",
+                "model_reference_id": "Producto solicitado",
+                "clean_summary": "Cliente busca un producto en zona centrica.",
             },
         }
         data.update(overrides)
@@ -331,7 +334,7 @@ class TestMailboxLeadGeneration(TransactionCase):
         self.assertEqual(vals["phone"], "+56912345678")
         self.assertEqual(vals["operation"], "compra")
         self.assertEqual(
-            vals["ai_summary"], "Cliente busca propiedad en zona centrica."
+            vals["ai_summary"], "Cliente busca un producto en zona centrica."
         )
         self.assertIn("ai_raw_response", vals)
 
@@ -373,7 +376,7 @@ class TestMailboxLeadGeneration(TransactionCase):
             "mailbox_lead_generation.email_captacion", "captacion@tudominio.com"
         )
         self.ICP.set_param(
-            "mailbox_lead_generation.dynamic_model", "product.real_estate"
+            "mailbox_lead_generation.dynamic_model", "product.template"
         )
         record = self._create_record()
         prompt = record._ai_build_system_prompt()
@@ -381,23 +384,33 @@ class TestMailboxLeadGeneration(TransactionCase):
         self.assertIn("captacion@tudominio.com", prompt)
 
     def test_ai_build_system_prompt_contains_dynamic_model_label(self):
+        if "product.template" not in self.env:
+            self.skipTest("product.template not installed in this DB")
         self.ICP.set_param(
-            "mailbox_lead_generation.dynamic_model", "product.real_estate"
+            "mailbox_lead_generation.dynamic_model", "product.template"
         )
         record = self._create_record()
         prompt = record._ai_build_system_prompt()
-        label = self.env["product.real_estate"]._description
+        label = self.env["product.template"]._description
         self.assertIn(label, prompt)
 
     def test_ai_build_system_prompt_is_domain_agnostic(self):
         self.ICP.set_param(
-            "mailbox_lead_generation.dynamic_model", "product.real_estate"
+            "mailbox_lead_generation.dynamic_model", "product.template"
         )
         record = self._create_record()
         prompt = record._ai_build_system_prompt().lower()
         # Must not hardcode any specific vertical vocabulary.
         self.assertNotIn("departamento", prompt)
         self.assertNotIn("arriendo", prompt)
+        # Must not leak the legacy real-estate contract keys.
+        self.assertNotIn("property_sale", prompt)
+        self.assertNotIn("property_rent", prompt)
+        self.assertNotIn("property_category", prompt)
+        # Emits the neutral intent domain and extraction key instead.
+        self.assertIn('"purchase"', prompt)
+        self.assertIn('"rent"', prompt)
+        self.assertIn("item_category", prompt)
 
     def test_ai_build_user_message_contains_email_fields(self):
         record = self._create_record(
@@ -420,9 +433,9 @@ class TestMailboxLeadGeneration(TransactionCase):
     def test_ai_validate_contract_extracts_intent(self):
         provider = self.env["mailbox.lead.generation.ai.provider"]
         vals = provider._ai_validate_contract(
-            self._ai_contract_payload(intent="property_sale")
+            self._ai_contract_payload(intent="purchase")
         )
-        self.assertEqual(vals["ai_intent"], "property_sale")
+        self.assertEqual(vals["ai_intent"], "purchase")
         # Unknown intent falls back to "other".
         vals = provider._ai_validate_contract(
             self._ai_contract_payload(intent="nonsense")
@@ -437,11 +450,11 @@ class TestMailboxLeadGeneration(TransactionCase):
     def test_analyze_and_match_properties_writes_intent_and_state(self):
         self._set_ai_config()
         record = self._create_record(state="procesando")
-        payload = self._ai_contract_payload(intent="property_sale", category="lead")
+        payload = self._ai_contract_payload(intent="purchase", category="lead")
         with mock.patch(_AI_PROVIDER_REQUESTS_POST) as mock_post:
             mock_post.return_value = self._ai_choices_response(payload)
             record._analyze_and_match_properties()
-        self.assertEqual(record.ai_intent, "property_sale")
+        self.assertEqual(record.ai_intent, "purchase")
         self.assertEqual(record.ai_category, "lead")
         self.assertEqual(record.ai_confidence, 0.9)
         self.assertEqual(record.state, "procesado")
@@ -477,37 +490,31 @@ class TestMailboxLeadGeneration(TransactionCase):
         self.assertEqual(rec_ok.state, "procesado")
         self.assertEqual(len(result), 1)
 
-    def test_run_matching_routes_property_intent(self):
-        if "product.real_estate" not in self.env:
-            self.skipTest("product.real_estate not installed in this DB")
-        owner = self.env["res.partner"].create({"name": "Dueño matching"})
-        prop = self.env["product.real_estate"].create(
-            {
-                "name": "Inmueble prueba matching",
-                "propietario_id": owner.id,
-                "operacion": "venta",
-                "tipo_propiedad": "departamento",
-            }
+    def test_run_matching_routes_purchase_intent(self):
+        if "product.template" not in self.env:
+            self.skipTest("product.template not installed in this DB")
+        product = self.env["product.template"].create(
+            {"name": "Producto prueba matching"}
         )
-        lead = self._create_record(ai_intent="property_sale", ai_extracted={})
+        lead = self._create_record(ai_intent="purchase", ai_extracted={})
         fake_match = [
             {
-                "res_model": "product.real_estate",
-                "res_id": prop.id,
-                "match_type": "propiedad",
+                "res_model": "product.template",
+                "res_id": product.id,
+                "match_type": "producto",
                 "score": 0.88,
-                "reason": "Coincidencia por ubicación y presupuesto.",
+                "reason": "Coincidencia por categoría y presupuesto.",
             }
         ]
         with mock.patch.object(
-            type(lead), "_match_real_estate", return_value=fake_match
+            type(lead), "_match_products", return_value=fake_match
         ) as mk:
             result = lead._run_matching()
-        mk.assert_called_once_with("property_sale", {})
+        mk.assert_called_once_with("purchase", {})
         self.assertEqual(result._name, "mailbox.lead.suggestion")
         self.assertEqual(len(result), 1)
         suggestion = result
-        self.assertEqual(suggestion.res_model, "product.real_estate")
-        self.assertEqual(suggestion.res_id, prop.id)
-        self.assertEqual(suggestion.match_type, "propiedad")
+        self.assertEqual(suggestion.res_model, "product.template")
+        self.assertEqual(suggestion.res_id, product.id)
+        self.assertEqual(suggestion.match_type, "producto")
         self.assertAlmostEqual(suggestion.score, 0.88, places=2)
