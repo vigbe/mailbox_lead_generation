@@ -6,10 +6,3 @@ from . import (  # noqa: F401
     mailbox_lead_suggestion,
     res_config_settings,
 )
-
-try:
-    import odoo.addons.real_estate_products  # noqa: F401
-
-    from . import real_estate_bridge  # noqa: F401
-except ImportError:
-    pass

@@ -27,17 +27,17 @@ class MailboxLeadSuggestion(models.Model):
     res_model = fields.Char(
         string="Modelo referenciado",
         required=True,
-        help="Modelo Odoo del registro sugerido, p.ej. 'product.real_estate', "
-        "'product.template'.",
+        help="Modelo Odoo del registro sugerido, p.ej. 'product.template'.",
     )
     res_id = fields.Integer(string="ID registro", required=True)
     match_type = fields.Selection(
         [
-            ("propiedad", "Propiedad"),
             ("producto", "Producto"),
-            # ``servicio`` is no longer emitted by the matching engine, but it
-            # stays in the domain so suggestions stored by older versions of
-            # the module keep rendering their label.
+            # ``propiedad`` and ``servicio`` are no longer emitted by the
+            # matching engine, but they stay in the domain so suggestions
+            # stored by older versions of the module keep rendering their
+            # label.
+            ("propiedad", "Propiedad"),
             ("servicio", "Servicio"),
             ("otro", "Otro"),
         ],
@@ -76,16 +76,11 @@ class MailboxLeadSuggestion(models.Model):
     def _selection_available_target_models(self):
         """Whitelist of models selectable for the ``record_ref`` Reference.
 
-        Built at runtime so the field never breaks when ``real_estate_products``
-        is not installed: ``product.template`` is offered when present and
-        ``product.real_estate`` only when available. De-duplicated; never
-        hard-fails if a model is missing.
+        Built at runtime so the field never breaks: ``product.template`` is
+        offered when present. Never hard-fails if a model is missing.
         """
         choices = []
-        candidates = ["product.template"]
-        if "product.real_estate" in self.env:
-            candidates.append("product.real_estate")
-        for model in candidates:
+        for model in ("product.template",):
             if model in self.env and model not in {key for key, _ in choices}:
                 desc = self.env[model]._description or model
                 choices.append((model, desc))

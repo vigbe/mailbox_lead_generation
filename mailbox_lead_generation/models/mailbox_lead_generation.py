@@ -347,25 +347,17 @@ class MailboxLeadGeneration(models.Model):
     def _get_matching_sources(self):
         """Return the ACTIVE matching sources as ``(source_key, label)`` tuples.
 
-        Pure registry: no matching logic. ``products`` (``product.template``) is
-        always available; ``real_estate`` is offered only when
-        ``real_estate_products`` is installed (model present in the registry).
+        Pure registry: no matching logic. ``products`` (``product.template``)
+        is always available.
         """
-        sources = [("products", "Productos (product.template)")]
-        if "product.real_estate" in self.env:
-            sources.append(("real_estate", "Propiedades (product.real_estate)"))
-        return sources
+        return [("products", "Productos (product.template)")]
 
     def _run_matching(self):
         """Run matching for this lead and return the created suggestions.
 
-        Routes by ``ai_intent`` to the applicable sources:
-        - purchase / rent -> ``_match_products`` (when ``product.template``
-          exists) AND ``_match_real_estate`` (only when ``real_estate_products``
-          is installed); both result sets are concatenated so the polymorphic
-          suggestions keep them as separate rows.
-        - service / promotion -> ``_match_products`` (when product.template
-          exists)
+        Routes by ``ai_intent`` to the applicable source:
+        - purchase / rent / service / promotion -> ``_match_products``
+          (when ``product.template`` exists)
 
         Each returned match dict is materialized into a
         ``mailbox.lead.suggestion`` row. Returns an empty recordset when
@@ -376,12 +368,7 @@ class MailboxLeadGeneration(models.Model):
         extracted = self.ai_extracted or {}
 
         matches = []
-        if intent in ("purchase", "rent"):
-            if "product.template" in self.env:
-                matches.extend(self._match_products(intent, extracted))
-            if "product.real_estate" in self.env:
-                matches.extend(self._match_real_estate(intent, extracted))
-        elif intent in ("service", "promotion") and (
+        if intent in ("purchase", "rent", "service", "promotion") and (
             "product.template" in self.env
         ):
             matches.extend(self._match_products(intent, extracted))
@@ -509,9 +496,9 @@ class MailboxLeadGeneration(models.Model):
 
         Guarantees at least one option so the Reference widget never breaks on
         an empty selection (a placeholder ``("", "—")`` is returned when no
-        candidate is present). Returns the configured dynamic model plus
-        ``product.real_estate`` (each only when present in the registry),
-        de-duplicated. Comodel-free: never hard-references a missing model.
+        candidate is present). Returns the configured dynamic model when
+        present in the registry. Comodel-free: never hard-references a
+        missing model.
         """
         choices = []
         ICP = self.env["ir.config_parameter"].sudo()
@@ -522,10 +509,6 @@ class MailboxLeadGeneration(models.Model):
         if dynamic_model in self.env:
             desc = self.env[dynamic_model]._description or dynamic_model
             choices.append((dynamic_model, desc))
-        for model in ("product.real_estate",):
-            if model in self.env and model not in {key for key, _ in choices}:
-                desc = self.env[model]._description or model
-                choices.append((model, desc))
         return choices or [("", "—")]
 
     def _cron_process_ai_batch(self, *, limit=50):
