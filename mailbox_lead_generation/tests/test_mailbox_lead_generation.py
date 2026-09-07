@@ -175,24 +175,18 @@ class TestMailboxLeadGeneration(TransactionCase):
         self.assertGreaterEqual(len(choices), 1)
 
     def test_selection_dynamic_models_includes_catalogs(self):
-        # product.template is the product-agnostic default catalog;
-        # product.real_estate is offered only when real_estate_products is
-        # installed (registry check, no hard dependency).
+        # product.template is the product-agnostic default catalog.
         choices = self.MailboxLeadGeneration._selection_dynamic_models()
         keys = [key for key, _ in choices]
         if "product.template" in self.env:
             self.assertIn("product.template", keys)
-        if "product.real_estate" in self.env:
-            self.assertIn("product.real_estate", keys)
 
     def test_selection_dynamic_models_configured_model(self):
-        if "product.real_estate" not in self.env:
-            self.skipTest("product.real_estate not installed in this DB")
         self.ICP.set_param(
-            "mailbox_lead_generation.dynamic_model", "product.real_estate"
+            "mailbox_lead_generation.dynamic_model", "res.partner"
         )
         choices = self.MailboxLeadGeneration._selection_dynamic_models()
-        self.assertIn("product.real_estate", [key for key, _ in choices])
+        self.assertIn("res.partner", [key for key, _ in choices])
 
     def test_selection_dynamic_models_unknown_model(self):
         # Unknown dynamic_model must not crash; always >=1 fallback option
@@ -204,8 +198,6 @@ class TestMailboxLeadGeneration(TransactionCase):
         keys = [key for key, _ in choices]
         if "product.template" in self.env:
             self.assertIn("product.template", keys)
-        if "product.real_estate" in self.env:
-            self.assertIn("product.real_estate", keys)
 
     # --- TASK-PR1-005: actions lifecycle ---
     def test_action_send_to_pending_from_nuevo(self):
@@ -384,7 +376,7 @@ class TestMailboxLeadGeneration(TransactionCase):
             "mailbox_lead_generation.email_captacion", "captacion@tudominio.com"
         )
         self.ICP.set_param(
-            "mailbox_lead_generation.dynamic_model", "product.real_estate"
+            "mailbox_lead_generation.dynamic_model", "product.template"
         )
         record = self._create_record()
         prompt = record._ai_build_system_prompt()
@@ -392,19 +384,19 @@ class TestMailboxLeadGeneration(TransactionCase):
         self.assertIn("captacion@tudominio.com", prompt)
 
     def test_ai_build_system_prompt_contains_dynamic_model_label(self):
-        if "product.real_estate" not in self.env:
-            self.skipTest("product.real_estate not installed in this DB")
+        if "product.template" not in self.env:
+            self.skipTest("product.template not installed in this DB")
         self.ICP.set_param(
-            "mailbox_lead_generation.dynamic_model", "product.real_estate"
+            "mailbox_lead_generation.dynamic_model", "product.template"
         )
         record = self._create_record()
         prompt = record._ai_build_system_prompt()
-        label = self.env["product.real_estate"]._description
+        label = self.env["product.template"]._description
         self.assertIn(label, prompt)
 
     def test_ai_build_system_prompt_is_domain_agnostic(self):
         self.ICP.set_param(
-            "mailbox_lead_generation.dynamic_model", "product.real_estate"
+            "mailbox_lead_generation.dynamic_model", "product.template"
         )
         record = self._create_record()
         prompt = record._ai_build_system_prompt().lower()
@@ -499,36 +491,30 @@ class TestMailboxLeadGeneration(TransactionCase):
         self.assertEqual(len(result), 1)
 
     def test_run_matching_routes_purchase_intent(self):
-        if "product.real_estate" not in self.env:
-            self.skipTest("product.real_estate not installed in this DB")
-        owner = self.env["res.partner"].create({"name": "Dueño matching"})
-        prop = self.env["product.real_estate"].create(
-            {
-                "name": "Inmueble prueba matching",
-                "propietario_id": owner.id,
-                "operacion": "venta",
-                "tipo_propiedad": "departamento",
-            }
+        if "product.template" not in self.env:
+            self.skipTest("product.template not installed in this DB")
+        product = self.env["product.template"].create(
+            {"name": "Producto prueba matching"}
         )
         lead = self._create_record(ai_intent="purchase", ai_extracted={})
         fake_match = [
             {
-                "res_model": "product.real_estate",
-                "res_id": prop.id,
-                "match_type": "propiedad",
+                "res_model": "product.template",
+                "res_id": product.id,
+                "match_type": "producto",
                 "score": 0.88,
-                "reason": "Coincidencia por ubicación y presupuesto.",
+                "reason": "Coincidencia por categoría y presupuesto.",
             }
         ]
         with mock.patch.object(
-            type(lead), "_match_real_estate", return_value=fake_match
+            type(lead), "_match_products", return_value=fake_match
         ) as mk:
             result = lead._run_matching()
         mk.assert_called_once_with("purchase", {})
         self.assertEqual(result._name, "mailbox.lead.suggestion")
         self.assertEqual(len(result), 1)
         suggestion = result
-        self.assertEqual(suggestion.res_model, "product.real_estate")
-        self.assertEqual(suggestion.res_id, prop.id)
-        self.assertEqual(suggestion.match_type, "propiedad")
+        self.assertEqual(suggestion.res_model, "product.template")
+        self.assertEqual(suggestion.res_id, product.id)
+        self.assertEqual(suggestion.match_type, "producto")
         self.assertAlmostEqual(suggestion.score, 0.88, places=2)
