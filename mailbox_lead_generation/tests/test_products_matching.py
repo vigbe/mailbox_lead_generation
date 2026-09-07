@@ -146,15 +146,6 @@ class TestProductsMatching(TransactionCase):
         )
         self.assertTrue(product_suggestions)
         self.assertIn(self.prod_bici.id, product_suggestions.mapped("res_id"))
-        # When real_estate_products is installed, the deep bridge runs too and
-        # contributes separate polymorphic rows (match_type 'propiedad').
-        if "product.real_estate" in self.env:
-            re_suggestions = lead.suggestion_ids.filtered(
-                lambda s: s.res_model == "product.real_estate"
-            )
-            self.assertTrue(
-                all(s.match_type == "propiedad" for s in re_suggestions)
-            )
 
     def test_match_products_respects_top_n(self):
         self._skip_if_no_pt()

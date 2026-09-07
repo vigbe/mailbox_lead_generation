@@ -18,10 +18,9 @@
                 mailbox.lead.generation model) becomes a record that is classified
                 by destination address (inquiry or acquisition), optionally triaged
                 by an AI provider (any OpenAI-compatible endpoint), matched against
-                your product catalog (any product type), with optional deep
-                matching for real-estate catalogs (real_estate_products) when
-                installed, and then converted into a clean
-                crm.lead. Spam is rejected before it ever reaches your pipeline.
+                your product catalog (any product type), and then converted into
+                a clean crm.lead. Spam is rejected before it ever reaches your
+                pipeline.
             """,
     "author": "Victor Bastías Escobar",
     "website": "https://vicbas.com",

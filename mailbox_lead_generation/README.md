@@ -16,8 +16,7 @@ never pollutes your pipeline.
 - **AI (optional):** any OpenAI-compatible endpoint — configurable base URL,
   model, API key, timeout and retries, with a scheduled batch-triage cron
 - **Matching:** suggests products from your product catalog (`product.template`,
-  any product type) for each email, with optional deep real-estate matching
-  (`real_estate_products`) when that module is installed
+  any product type) for each email
 - **Workflow:** new → reviewed → converted to `crm.lead` (or rejected as spam,
   or sent to pending), with full traceability back to the source email
 
@@ -50,8 +49,8 @@ provider credentials.
 
 - The user interface is currently available in Spanish; an English UI is on
   the roadmap.
-- Product matching works with any `product.template` catalog; the deep
-  real-estate matching activates only when `real_estate_products` is installed.
+- Product matching works with any `product.template` catalog (goods and
+  services alike).
 
 ## License
 
