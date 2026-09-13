@@ -5,77 +5,179 @@
         <field name="model">res.config.settings</field>
         <field name="inherit_id" ref="base_setup.res_config_settings_view_form"/>
         <field name="arch" type="xml">
-            <!-- Odoo 19: insert a dedicated app block before the first existing
-                 app (base_setup general settings). Do not rely on legacy
-                 div.settings, which no longer exists in the base settings form. -->
-            <xpath expr="//app[1]" position="before">
-                <app string="Mail Box Lead Generation" name="mailbox_lead_generation"
-                     data-key="mailbox_lead_generation" groups="base.group_system">
+            <!-- Odoo 16: the base settings form has no <app> nodes of its own and
+                 uses the classic settings layout (h2 + o_settings_container);
+                 the <app>/<block>/<setting> tags are Odoo 17+ only. -->
+            <xpath expr="//form" position="inside">
+                <app data-string="Mail Box Lead Generation"
+                     string="Mail Box Lead Generation"
+                     name="mailbox_lead_generation"
+                     groups="base.group_system">
 
-                    <block title="Clasificación de correos"
-                           id="mailbox_lead_generation_classification_block">
-                        <setting id="mailbox_email_consultas_setting"
-                                 string="Emails de Consulta"
-                                 help="Direcciones de destino (separadas por comas) que se clasifican como «consulta» (comprador/arrendatario interesado).">
-                            <field name="mailbox_email_consultas"
-                                   placeholder="consultas@tudominio.com"/>
-                        </setting>
-                        <setting id="mailbox_email_captacion_setting"
-                                 string="Emails de Captación"
-                                 help="Direcciones de destino (separadas por comas) que se clasifican como «captación» (un tercero ofreciendo un producto o servicio).">
-                            <field name="mailbox_email_captacion"
-                                   placeholder="captacion@tudominio.com"/>
-                        </setting>
-                    </block>
+                    <h2>Clasificación de correos</h2>
+                    <div class="row mt16 o_settings_container"
+                         id="mailbox_lead_generation_classification">
+                        <div class="col-12 col-lg-6 o_setting_box"
+                             id="mailbox_email_consultas_setting">
+                            <div class="o_setting_right_pane">
+                                <label for="mailbox_email_consultas" string="Emails de Consulta"/>
+                                <div class="text-muted">
+                                    Direcciones de destino (separadas por comas) que se
+                                    clasifican como «consulta» (comprador/arrendatario interesado).
+                                </div>
+                                <div class="content-group">
+                                    <div class="mt8">
+                                        <field name="mailbox_email_consultas"
+                                               placeholder="consultas@tudominio.com"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box"
+                             id="mailbox_email_captacion_setting">
+                            <div class="o_setting_right_pane">
+                                <label for="mailbox_email_captacion" string="Emails de Captación"/>
+                                <div class="text-muted">
+                                    Direcciones de destino (separadas por comas) que se
+                                    clasifican como «captación» (un tercero ofreciendo un
+                                    producto o servicio).
+                                </div>
+                                <div class="content-group">
+                                    <div class="mt8">
+                                        <field name="mailbox_email_captacion"
+                                               placeholder="captacion@tudominio.com"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-                    <block title="Decantación IA"
-                           id="mailbox_lead_generation_ai_decantation_block">
-                        <setting id="mailbox_ai_provider_setting"
-                                 string="Proveedor IA"
-                                 help="Identificador del proveedor OpenAI-compatible a usar (default: openai).">
-                            <field name="mailbox_ai_provider"
-                                   placeholder="openai"/>
-                        </setting>
-                        <setting id="mailbox_ai_api_key_setting"
-                                 string="API key IA"
-                                 help="Clave de API del proveedor. Vacía = IA deshabilitada (registros pasan a «error»).">
-                            <field name="mailbox_ai_api_key" password="True"
-                                   placeholder="sk-..."/>
-                        </setting>
-                        <setting id="mailbox_ai_model_setting"
-                                 string="Modelo IA"
-                                 help="Nombre del modelo a invocar (default: gpt-4o-mini).">
-                            <field name="mailbox_ai_model"
-                                   placeholder="gpt-4o-mini"/>
-                        </setting>
-                        <setting id="mailbox_ai_base_url_setting"
-                                 string="Base URL IA"
-                                 help="URL base del endpoint OpenAI-compatible. Vacío = endpoint por defecto del proveedor.">
-                            <field name="mailbox_ai_base_url"
-                                   placeholder="https://api.openai.com/v1"/>
-                        </setting>
-                        <setting id="mailbox_ai_max_tokens_setting"
-                                 string="Máx. tokens"
-                                 help="Cantidad máxima de tokens de la respuesta IA (default: 1000).">
-                            <field name="mailbox_ai_max_tokens"/>
-                        </setting>
-                        <setting id="mailbox_ai_timeout_setting"
-                                 string="Timeout (s)"
-                                 help="Timeout en segundos por llamada HTTP a la IA (default: 30).">
-                            <field name="mailbox_ai_timeout"/>
-                        </setting>
-                        <setting id="mailbox_ai_retries_setting"
-                                 string="Reintentos"
-                                 help="Reintentos ante fallos de red/parseo por registro (default: 2).">
-                            <field name="mailbox_ai_retries"/>
-                        </setting>
-                        <setting id="mailbox_dynamic_model_setting"
-                                 string="Modelo dinámico"
-                                 help="Modelo Odoo contra el que se resuelve el matching IA (default: product.template).">
-                            <field name="mailbox_dynamic_model"
-                                   placeholder="product.template"/>
-                        </setting>
-                    </block>
+                    <h2>Decantación IA</h2>
+                    <div class="row mt16 o_settings_container"
+                         id="mailbox_lead_generation_ai_decantation">
+                        <div class="col-12 col-lg-6 o_setting_box"
+                             id="mailbox_ai_provider_setting">
+                            <div class="o_setting_right_pane">
+                                <label for="mailbox_ai_provider" string="Proveedor IA"/>
+                                <div class="text-muted">
+                                    Identificador del proveedor OpenAI-compatible a usar
+                                    (default: openai).
+                                </div>
+                                <div class="content-group">
+                                    <div class="mt8">
+                                        <field name="mailbox_ai_provider" placeholder="openai"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box"
+                             id="mailbox_ai_api_key_setting">
+                            <div class="o_setting_right_pane">
+                                <label for="mailbox_ai_api_key" string="API key IA"/>
+                                <div class="text-muted">
+                                    Clave de API del proveedor. Vacía = IA deshabilitada
+                                    (registros pasan a «error»).
+                                </div>
+                                <div class="content-group">
+                                    <div class="mt8">
+                                        <field name="mailbox_ai_api_key" password="True"
+                                               placeholder="sk-..."/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box"
+                             id="mailbox_ai_model_setting">
+                            <div class="o_setting_right_pane">
+                                <label for="mailbox_ai_model" string="Modelo IA"/>
+                                <div class="text-muted">
+                                    Nombre del modelo a invocar (default: gpt-4o-mini).
+                                </div>
+                                <div class="content-group">
+                                    <div class="mt8">
+                                        <field name="mailbox_ai_model" placeholder="gpt-4o-mini"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box"
+                             id="mailbox_ai_base_url_setting">
+                            <div class="o_setting_right_pane">
+                                <label for="mailbox_ai_base_url" string="Base URL IA"/>
+                                <div class="text-muted">
+                                    URL base del endpoint OpenAI-compatible. Vacío =
+                                    endpoint por defecto del proveedor.
+                                </div>
+                                <div class="content-group">
+                                    <div class="mt8">
+                                        <field name="mailbox_ai_base_url"
+                                               placeholder="https://api.openai.com/v1"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box"
+                             id="mailbox_ai_max_tokens_setting">
+                            <div class="o_setting_right_pane">
+                                <label for="mailbox_ai_max_tokens" string="Máx. tokens"/>
+                                <div class="text-muted">
+                                    Cantidad máxima de tokens de la respuesta IA
+                                    (default: 1000).
+                                </div>
+                                <div class="content-group">
+                                    <div class="mt8">
+                                        <field name="mailbox_ai_max_tokens"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box"
+                             id="mailbox_ai_timeout_setting">
+                            <div class="o_setting_right_pane">
+                                <label for="mailbox_ai_timeout" string="Timeout (s)"/>
+                                <div class="text-muted">
+                                    Timeout en segundos por llamada HTTP a la IA
+                                    (default: 30).
+                                </div>
+                                <div class="content-group">
+                                    <div class="mt8">
+                                        <field name="mailbox_ai_timeout"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box"
+                             id="mailbox_ai_retries_setting">
+                            <div class="o_setting_right_pane">
+                                <label for="mailbox_ai_retries" string="Reintentos"/>
+                                <div class="text-muted">
+                                    Reintentos ante fallos de red/parseo por registro
+                                    (default: 2).
+                                </div>
+                                <div class="content-group">
+                                    <div class="mt8">
+                                        <field name="mailbox_ai_retries"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box"
+                             id="mailbox_dynamic_model_setting">
+                            <div class="o_setting_right_pane">
+                                <label for="mailbox_dynamic_model" string="Modelo dinámico"/>
+                                <div class="text-muted">
+                                    Modelo Odoo contra el que se resuelve el matching IA
+                                    (default: product.template).
+                                </div>
+                                <div class="content-group">
+                                    <div class="mt8">
+                                        <field name="mailbox_dynamic_model"
+                                               placeholder="product.template"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
                 </app>
             </xpath>
