@@ -27,8 +27,6 @@
     "support": "contacto@vicbas.com",
     "maintainer": "Victor Bastías Escobar",
     "license": "LGPL-3",
-    "price": 9.99,
-    "currency": "USD",
     "depends": [
         "base",
         "crm",
