@@ -7,7 +7,7 @@ optional AI), can be matched against your product catalog (`product.template`,
 any product type), and is converted into a clean `crm.lead` in one click. Spam
 never pollutes your pipeline.
 
-> Available on the Odoo Apps Store for Odoo 16.0, 17.0, 18.0 and 19.0 — by
+> Available on the Odoo Apps Store for Odoo 16.0, 17.0, 18.0, 19.0 and 20.0 — by
 > [Victor Bastías Escobar](https://vicbas.com).
 
 - **Inbox model:** `mailbox.lead.generation` (target it from fetchmail)
@@ -20,7 +20,7 @@ never pollutes your pipeline.
 - **Workflow:** new → reviewed → converted to `crm.lead` (or rejected as spam,
   or sent to pending), with full traceability back to the source email
 
-> Odoo 16–19 Community & Enterprise · Python 3.10+ · depends on `base` +
+> Odoo 16–20 Community & Enterprise · Python 3.10+ · depends on `base` +
 > `crm` (+ pip `requests`)
 
 ## Install

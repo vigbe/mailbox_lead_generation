@@ -3,15 +3,15 @@
 # pyright: reportUnusedExpression=false
 {  # noqa: B018  # Odoo manifest: bare dict literal read via ast.literal_eval
     "name": "Mailbox Lead Generation",
-    "version": "19.0.1.3.0",
+    "version": "20.0.1.3.0",
     "category": "Sales/CRM",
     "summary": "Email triage inbox that turns incoming mail into clean CRM leads",
     "description": """
                 Mailbox Lead Generation
                 ========================
 
-                Published for Odoo 16.0, 17.0, 18.0 and 19.0 (Community and
-                Enterprise).
+                Published for Odoo 16.0, 17.0, 18.0, 19.0 and 20.0 (Community
+                and Enterprise).
 
                 A decantation inbox (pre-stage) for incoming email. Every message
                 received through an incoming mail server (fetchmail targeting the
@@ -33,7 +33,7 @@
     ],
     "data": [
         "security/security_groups.xml",
-        "security/ir.model.access.csv",
+        "security/ir.access.csv",
         "views/mailbox_lead_generation_views.xml",
         "views/mailbox_lead_suggestion_views.xml",
         "data/res_config_settings_views.xml",
