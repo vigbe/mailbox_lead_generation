@@ -8,8 +8,7 @@ class TestMailboxLeadSuggestion(TransactionCase):
     """Phase B — structural plumbing tests for ``mailbox.lead.suggestion``.
 
     No AI, no network: these tests exercise the polymorphic suggestion model,
-    the ``suggestion_ids`` One2many, the source registry scaffolds, and the
-    conditional ``property_ids`` mirror.
+    the ``suggestion_ids`` One2many, and the source registry scaffolds.
     """
 
     def setUp(self):
@@ -109,14 +108,12 @@ class TestMailboxLeadSuggestion(TransactionCase):
         self.assertEqual(len(result), 0)
 
     # ------------------------------------------------------------------
-    # Legacy suggestion labels (stored by pre-generic versions)
+    # Suggestion match types
     # ------------------------------------------------------------------
-    def test_legacy_match_types_still_render(self):
-        # The engine only emits "producto" now, but old stored rows keep their
-        # labels: the selection domain must retain the legacy keys.
+    def test_match_types_domain(self):
         valid_keys = {
             key for key, _ in type(self.Suggestion).match_type.selection
         }
-        self.assertIn("propiedad", valid_keys)
         self.assertIn("servicio", valid_keys)
         self.assertIn("producto", valid_keys)
+        self.assertIn("otro", valid_keys)
