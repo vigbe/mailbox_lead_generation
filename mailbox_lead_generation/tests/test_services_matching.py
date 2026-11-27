@@ -26,7 +26,7 @@ class TestServicesMatching(TransactionCase):
         cls.PT = cls.env["product.template"]
         cls.Lead = cls.env["mailbox.lead.generation"]
         cls.svc_legal = cls.PT.create(
-            {"name": "Asesoría Legal Inmobiliaria", "type": "service"}
+            {"name": "Asesoría Legal Corporativa", "type": "service"}
         )
         cls.svc_asesoria = cls.PT.create(
             {"name": "Asesoría Financiera", "type": "service"}
@@ -57,7 +57,7 @@ class TestServicesMatching(TransactionCase):
                 "name": "solicita asesoría legal",
                 "ai_intent": "service",
                 "ai_extracted": {
-                    "clean_summary": "Cliente solicita asesoría legal inmobiliaria"
+                    "clean_summary": "Cliente solicita asesoría legal corporativa"
                 },
             }
         )

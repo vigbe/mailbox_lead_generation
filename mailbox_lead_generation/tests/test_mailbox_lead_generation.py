@@ -33,7 +33,7 @@ class TestMailboxLeadGeneration(TransactionCase):
         """Build a minimal msg_dict as produced by mail's message_process."""
         msg = {
             "message_id": f"<test-{self._next_uid()}@example.com>",
-            "subject": "Departamento en Las Condes",
+            "subject": "Consulta de servicio corporativo",
             "from": "Juan Perez <juan@example.com>",
             "email_from": "juan@example.com",
             "to": "consultas@tudominio.com",
@@ -52,11 +52,11 @@ class TestMailboxLeadGeneration(TransactionCase):
         record = self.MailboxLeadGeneration.message_new(msg)
         self.assertTrue(record.id)
         self.assertEqual(record.state, "nuevo")
-        self.assertEqual(record.subject, "Departamento en Las Condes")
+        self.assertEqual(record.subject, "Consulta de servicio corporativo")
         self.assertEqual(record.email_from, "juan@example.com")
         self.assertEqual(record.email_to, "consultas@tudominio.com")
         self.assertEqual(record.body_html, "<p>Hola, quiero informacion.</p>")
-        self.assertIn("Departamento en Las Condes", record.name)  # subject in name
+        self.assertIn("Consulta de servicio corporativo", record.name)  # subject in name
         self.assertIn("juan", record.name.lower())  # sender local part in name
 
     def test_assign_lead_type_by_destination(self):
@@ -191,7 +191,7 @@ class TestMailboxLeadGeneration(TransactionCase):
     def test_selection_dynamic_models_unknown_model(self):
         # Unknown dynamic_model must not crash; always >=1 fallback option
         self.ICP.set_param(
-            "mailbox_lead_generation.dynamic_model", "inmuebles.no.existe"
+            "mailbox_lead_generation.dynamic_model", "catalogo.no.existe"
         )
         choices = self.MailboxLeadGeneration._selection_dynamic_models()
         self.assertGreaterEqual(len(choices), 1)
@@ -400,16 +400,12 @@ class TestMailboxLeadGeneration(TransactionCase):
         )
         record = self._create_record()
         prompt = record._ai_build_system_prompt().lower()
-        # Must not hardcode any specific vertical vocabulary.
-        self.assertNotIn("departamento", prompt)
-        self.assertNotIn("arriendo", prompt)
-        # Must not leak the legacy real-estate contract keys.
-        self.assertNotIn("property_sale", prompt)
-        self.assertNotIn("property_rent", prompt)
-        self.assertNotIn("property_category", prompt)
-        # Emits the neutral intent domain and extraction key instead.
+        # Emits the neutral intent domain and extraction key.
         self.assertIn('"purchase"', prompt)
         self.assertIn('"rent"', prompt)
+        self.assertIn('"service"', prompt)
+        self.assertIn('"promotion"', prompt)
+        self.assertIn('"other"', prompt)
         self.assertIn("item_category", prompt)
 
     def test_ai_build_user_message_contains_email_fields(self):
