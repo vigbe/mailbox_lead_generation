@@ -12,7 +12,7 @@ class TestProductsMatching(TransactionCase):
     """Phase C3: product-catalog matching (``_match_products``).
 
     Exercises keyword extraction (accent normalization, the neutral
-    ``item_category`` key with the legacy ``property_category`` fallback),
+    ``item_category`` key),
     candidate scoring against ``product.template`` of ANY type (goods
     ``consu`` and ``service`` products), top-N, and the ``_run_matching``
     routing for the service and purchase intents. Skipped when ``product``
@@ -28,7 +28,7 @@ class TestProductsMatching(TransactionCase):
         cls.PT = cls.env["product.template"]
         cls.Lead = cls.env["mailbox.lead.generation"]
         cls.svc_legal = cls.PT.create(
-            {"name": "Asesoría Legal Inmobiliaria", "type": "service"}
+            {"name": "Asesoría Legal Corporativa", "type": "service"}
         )
         cls.svc_asesoria = cls.PT.create(
             {"name": "Asesoría Financiera", "type": "service"}
@@ -59,12 +59,6 @@ class TestProductsMatching(TransactionCase):
         self._skip_if_no_pt()
         kw = self.Lead._prod_extract_keywords({"item_category": "bicicleta"})
         self.assertIn("bicicleta", kw)
-        # Legacy rows stored before 19.0.1.3.0 keep feeding keywords through
-        # the old extraction key.
-        kw_legacy = self.Lead._prod_extract_keywords(
-            {"property_category": "bicicleta"}
-        )
-        self.assertIn("bicicleta", kw_legacy)
 
     def test_match_products_by_keyword_service_type(self):
         self._skip_if_no_pt()
@@ -73,7 +67,7 @@ class TestProductsMatching(TransactionCase):
                 "name": "solicita asesoría legal",
                 "ai_intent": "service",
                 "ai_extracted": {
-                    "clean_summary": "Cliente solicita asesoría legal inmobiliaria"
+                    "clean_summary": "Cliente solicita asesoría legal corporativa"
                 },
             }
         )

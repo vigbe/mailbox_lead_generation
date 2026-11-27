@@ -13,7 +13,7 @@ class ResConfigSettings(models.TransientModel):
         string="Emails de Consulta",
         config_parameter="mailbox_lead_generation.email_consultas",
         help="Direcciones de destino (separadas por comas) que se clasifican "
-        'como "consulta" (comprador/arrendatario interesado).',
+        'como "consulta" (cliente o interesado).',
     )
     mailbox_email_captacion = fields.Char(
         string="Emails de Captación",

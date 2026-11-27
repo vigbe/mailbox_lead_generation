@@ -16,7 +16,7 @@
                            id="mailbox_lead_generation_classification_block">
                         <setting id="mailbox_email_consultas_setting"
                                  string="Emails de Consulta"
-                                 help="Direcciones de destino (separadas por comas) que se clasifican como «consulta» (comprador/arrendatario interesado).">
+                                 help="Direcciones de destino (separadas por comas) que se clasifican como «consulta» (cliente o interesado).">
                             <field name="mailbox_email_consultas"
                                    placeholder="consultas@tudominio.com"/>
                         </setting>
