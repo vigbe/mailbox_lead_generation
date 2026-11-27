@@ -33,11 +33,8 @@ class MailboxLeadSuggestion(models.Model):
     match_type = fields.Selection(
         [
             ("producto", "Producto"),
-            # ``propiedad`` and ``servicio`` are no longer emitted by the
-            # matching engine, but they stay in the domain so suggestions
-            # stored by older versions of the module keep rendering their
-            # label.
-            ("propiedad", "Propiedad"),
+            # ``servicio`` is kept in the domain so suggestions stored by
+            # older versions of the module keep rendering their label.
             ("servicio", "Servicio"),
             ("otro", "Otro"),
         ],
