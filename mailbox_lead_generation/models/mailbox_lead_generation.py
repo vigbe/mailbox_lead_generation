@@ -142,7 +142,7 @@ class MailboxLeadGeneration(models.Model):
     ai_intent = fields.Selection(
         [
             ("purchase", "Producto - Compra"),
-            ("rent", "Producto - Arriendo"),
+            ("rent", "Producto - Suscripción / Uso temporal"),
             ("service", "Servicio"),
             ("promotion", "Destacar publicación"),
             ("other", "Otro"),
@@ -150,8 +150,8 @@ class MailboxLeadGeneration(models.Model):
         string="Intención IA",
         copy=False,
         tracking=True,
-        help="Intención inferida por la IA (compra/arriendo de un producto, "
-        "servicio, destacar publicación, otro).",
+        help="Intención inferida por la IA (compra/contratación de un producto "
+        "o servicio, destacar publicación, otro).",
     )
     ai_extracted = fields.Json(
         string="Datos extraídos IA",
@@ -167,7 +167,7 @@ class MailboxLeadGeneration(models.Model):
     operation = fields.Char(
         string="Operación",
         copy=False,
-        help="Operación extraída por la IA (venta, arriendo, etc.).",
+        help="Operación extraída por la IA (venta, suscripción, servicio, etc.).",
     )
     model_reference = fields.Reference(
         selection="_selection_dynamic_models",
@@ -399,15 +399,13 @@ class MailboxLeadGeneration(models.Model):
 
         Tokens are lowercased, accent-stripped and filtered to >3 chars so
         ``asesoría`` matches ``asesoria``, and short stop-words are dropped.
-        Reads the neutral ``item_category`` extraction key, with the legacy
-        ``property_category`` kept as a fallback for rows stored by older
-        module versions.
+        Reads the neutral ``item_category`` extraction key.
         """
         extracted = extracted or {}
         parts = [
             extracted.get("clean_summary"),
             extracted.get("notes"),
-            extracted.get("item_category") or extracted.get("property_category"),
+            extracted.get("item_category"),
             extracted.get("operation"),
         ]
         keywords = set()

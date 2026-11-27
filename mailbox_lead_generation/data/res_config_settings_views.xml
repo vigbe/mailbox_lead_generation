@@ -23,7 +23,7 @@
                                 <label for="mailbox_email_consultas" string="Emails de Consulta"/>
                                 <div class="text-muted">
                                     Direcciones de destino (separadas por comas) que se
-                                    clasifican como «consulta» (comprador/arrendatario interesado).
+                                    clasifican como «consulta» (cliente o interesado).
                                 </div>
                                 <div class="content-group">
                                     <div class="mt8">

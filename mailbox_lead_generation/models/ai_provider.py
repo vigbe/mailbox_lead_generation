@@ -19,7 +19,7 @@ _AI_CATEGORY_DOMAIN = ("lead", "captacion", "servicio", "otro")
 
 # Canonical intent domain shared with the concrete model's ``ai_intent`` field.
 # The values are intentionally English-stable literals so the domain-agnostic
-# system prompt never emits a Spanish vertical term (e.g. "arriendo").
+# system prompt never emits a vertical-specific Spanish term.
 _AI_INTENT_DOMAIN = (
     "purchase",
     "rent",
@@ -152,9 +152,9 @@ class MailboxLeadGenerationAIProvider(models.AbstractModel):
 
         Reads the routing mailboxes and the configured dynamic-model label
         from ``ir.config_parameter`` so the prompt adapts to the install
-        without ever hardcoding a vertical vocabulary (no property type or
-        operation term is emitted). The model is instructed to return the
-        strict JSON contract consumed by ``_ai_validate_contract``.
+        without ever hardcoding a vertical vocabulary (no vertical-specific
+        item or operation term is emitted). The model is instructed to return
+        the strict JSON contract consumed by ``_ai_validate_contract``.
 
         ``self`` is a single ``mailbox.lead.generation`` record.
         """
@@ -211,7 +211,7 @@ class MailboxLeadGenerationAIProvider(models.AbstractModel):
             '- "intent" "purchase" = the client wants to buy an item/product; '
             '"rent" = the client wants to rent an item/product; "service" = '
             'the client wants a service; "promotion" = the client wants to '
-            'highlight an existing listing; "other" = undetermined.\n'
+            'highlight an existing product or service; "other" = undetermined.\n'
             '- Always include "clean_summary": a short neutral summary of '
             "the request.\n"
         )
